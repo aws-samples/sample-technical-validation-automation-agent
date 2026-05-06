@@ -533,10 +533,6 @@ async def _handle_diff(args: dict):
         if len(reports) < 2:
             return [TextContent(type="text", text=f"Error: Need at least 2 validation reports to compare. Found {len(reports)}. Run validation again to create a second report.")]
 
-        def count_controls(path):
-            content = path.read_text()
-            return content.count("### ✅") + content.count("### ❌")
-
         # Select reports based on mode
         if mode == "custom" and (run1_name or run2_name):
             # Support partial timestamp matching (e.g. "20260506_095108" matches "validation_summary_20260506_095108.md")
