@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "thor": {
+      "command": "${powerDir}/server/.venv/bin/python3",
+      "timeout": 600000,
+      "transport": "stdio",
+      "args": ["-m", "server.thor_mcp_server"],
+      "cwd": "${powerDir}",
+      "env": {
+        "HOME": "${env:HOME}",
+        "AWS_DEFAULT_REGION": "us-east-1",
+        "PATH": "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+      }
+    }
+  }
+}
