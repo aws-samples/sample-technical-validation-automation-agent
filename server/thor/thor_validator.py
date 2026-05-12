@@ -439,7 +439,7 @@ class ThorValidator:
         """Extract text from PowerPoint files."""
         try:
             from zipfile import ZipFile
-            import xml.etree.ElementTree as ET
+            import defusedxml.ElementTree as ET
             
             text_parts = []
             with ZipFile(file_path, 'r') as z:
@@ -463,7 +463,7 @@ class ThorValidator:
         """Extract text from Word documents."""
         try:
             from zipfile import ZipFile
-            import xml.etree.ElementTree as ET
+            import defusedxml.ElementTree as ET
             
             text_parts = []
             with ZipFile(file_path, 'r') as z:
