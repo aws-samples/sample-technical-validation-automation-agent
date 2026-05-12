@@ -355,8 +355,8 @@ class ThorValidator:
             self.image_cache[cache_key] = image_bytes
             return image_bytes
     
-    def process_files(self, file_paths):
-        """Process files for Bedrock submission"""
+    def process_files(self, file_paths, max_doc_bytes=4_500_000):
+        """Process files for Bedrock submission, handling oversized files."""
         processed_files = []
         for file_path in file_paths:
             path = Path(file_path)
@@ -380,9 +380,102 @@ class ThorValidator:
             if extension in ['png', 'jpg', 'jpeg']:
                 file_bytes = self._resize_image_if_needed(file_path, file_bytes, extension)
             
+            # Handle oversized documents by extracting text
+            if len(file_bytes) > max_doc_bytes:
+                print(f"   📄 File too large ({len(file_bytes)/1024/1024:.1f}MB): {path.name} — extracting text...")
+                extracted_text = self._extract_text_from_file(file_path, extension, max_doc_bytes)
+                if extracted_text:
+                    # Send as a text/plain document instead
+                    text_bytes = extracted_text.encode('utf-8')[:max_doc_bytes]
+                    processed_files.append((text_bytes, 'txt', clean_name))
+                    continue
+                else:
+                    print(f"   ⚠️  Could not extract text from {path.name}, skipping")
+                    continue
+            
             processed_files.append((file_bytes, extension, clean_name))
         
         return processed_files
+
+    def _extract_text_from_file(self, file_path, extension, max_bytes=4_500_000):
+        """Extract text content from oversized files."""
+        try:
+            if extension == 'pdf':
+                return self._extract_pdf_text(file_path, max_bytes)
+            elif extension in ('pptx',):
+                return self._extract_pptx_text(file_path, max_bytes)
+            elif extension in ('docx',):
+                return self._extract_docx_text(file_path, max_bytes)
+            elif extension in ('xlsx', 'xls'):
+                import pandas as pd
+                df = pd.read_excel(file_path)
+                return df.to_string()[:max_bytes]
+            else:
+                # Try reading as text
+                with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+                    return f.read(max_bytes)
+        except Exception as e:
+            print(f"   ⚠️  Text extraction failed for {Path(file_path).name}: {e}")
+            return None
+
+    def _extract_pdf_text(self, file_path, max_bytes=4_500_000):
+        """Extract text from PDF using PyPDF2."""
+        try:
+            with open(file_path, 'rb') as f:
+                reader = PyPDF2.PdfReader(f)
+                text_parts = []
+                for page in reader.pages:
+                    text = page.extract_text()
+                    if text:
+                        text_parts.append(text)
+                    if sum(len(t) for t in text_parts) > max_bytes:
+                        break
+                return "\n".join(text_parts)[:max_bytes]
+        except Exception as e:
+            print(f"   ⚠️  PDF text extraction failed: {e}")
+            return None
+
+    def _extract_pptx_text(self, file_path, max_bytes=4_500_000):
+        """Extract text from PowerPoint files."""
+        try:
+            from zipfile import ZipFile
+            import xml.etree.ElementTree as ET
+            
+            text_parts = []
+            with ZipFile(file_path, 'r') as z:
+                # Get slide files
+                slide_files = sorted([f for f in z.namelist() if f.startswith('ppt/slides/slide') and f.endswith('.xml')])
+                for slide_file in slide_files:
+                    with z.open(slide_file) as sf:
+                        tree = ET.parse(sf)
+                        # Extract all text elements
+                        for elem in tree.iter():
+                            if elem.text and elem.text.strip():
+                                text_parts.append(elem.text.strip())
+                    if sum(len(t) for t in text_parts) > max_bytes:
+                        break
+            return "\n".join(text_parts)[:max_bytes]
+        except Exception as e:
+            print(f"   ⚠️  PPTX text extraction failed: {e}")
+            return None
+
+    def _extract_docx_text(self, file_path, max_bytes=4_500_000):
+        """Extract text from Word documents."""
+        try:
+            from zipfile import ZipFile
+            import xml.etree.ElementTree as ET
+            
+            text_parts = []
+            with ZipFile(file_path, 'r') as z:
+                with z.open('word/document.xml') as doc:
+                    tree = ET.parse(doc)
+                    for elem in tree.iter():
+                        if elem.text and elem.text.strip():
+                            text_parts.append(elem.text.strip())
+            return "\n".join(text_parts)[:max_bytes]
+        except Exception as e:
+            print(f"   ⚠️  DOCX text extraction failed: {e}")
+            return None
     
     def invoke_bedrock(self, documents=None, images=None, text=None, 
                       prompt_context="", prompt_question="", system_prompt="", cache_bust=False):

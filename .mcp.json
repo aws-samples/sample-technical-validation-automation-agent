@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "thor": {
+      "command": "/Users/ahsanrm/Downloads/PSA_FINAL_PACKAGE/thor-power/server/.venv/bin/python3",
+      "args": ["-m", "server.thor_mcp_server"],
+      "cwd": "/Users/ahsanrm/Downloads/PSA_FINAL_PACKAGE/thor-power",
+      "timeout": 600000,
+      "env": {
+        "HOME": "/Users/ahsanrm",
+        "AWS_DEFAULT_REGION": "us-east-1",
+        "AWS_PROFILE": "ahsan+loki-Admin",
+        "PATH": "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+      }
+    }
+  }
+}

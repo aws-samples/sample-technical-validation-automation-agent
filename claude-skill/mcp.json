@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "thor": {
+      "command": "/EDIT_THIS/path/to/thor-power/server/.venv/bin/python3",
+      "args": ["-m", "server.thor_mcp_server"],
+      "cwd": "/EDIT_THIS/path/to/thor-power",
+      "timeout": 600000,
+      "env": {
+        "HOME": "/EDIT_THIS/Users/yourname",
+        "AWS_PROFILE": "YOUR_BEDROCK_PROFILE",
+        "AWS_DEFAULT_REGION": "us-east-1",
+        "PATH": "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+      }
+    }
+  }
+}
