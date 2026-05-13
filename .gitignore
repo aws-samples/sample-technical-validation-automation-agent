@@ -1,1 +1,7 @@
 .mcp.json
+.claude/settings.local.json
+server/.venv/
+server/__pycache__/
+server/thor/__pycache__/
+server/thor/tools/__pycache__/
+*.pyc

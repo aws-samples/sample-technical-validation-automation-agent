@@ -117,8 +117,41 @@ Smart credential resolution order:
 | Error | Fix |
 |-------|-----|
 | `spawn bash ENOENT` | Use `/bin/bash` (absolute) in mcp.json command field |
+| `spawn cmd.exe ENOENT` (Windows) | See Windows Setup below |
 | `AWS Credentials: Missing` | Set `HOME` in env block so boto3 can find `~/.aws/` |
 | `ExpiredTokenException` | Refresh creds (`isengardcli assume` / `aws sso login`) and retry. Don't hardcode keys in env. |
 | `Bedrock access denied` | IAM needs `bedrock:InvokeModel` on `anthropic.*` models |
 | `No Excel file found` | Place .xlsx in root of partner folder |
 | `PDF too large` | `brew install qpdf` (Mac) — needed for PDFs over 80 pages |
+
+## Windows Setup
+
+> **Platform support:** Thor is developed and tested on macOS/Linux. Windows works via the manual setup below. The Power's auto-config (one-click install) currently only works on macOS/Linux due to a Kiro platform limitation where Power-managed MCP servers don't inherit system paths on Windows.
+
+The Thor Power's auto-config uses a bash script which doesn't work natively on Windows. To use Thor on Windows, add the server manually to your user-level MCP config:
+
+1. Run the bootstrap script once in PowerShell:
+```powershell
+cd <path-to-thor-power>/server
+powershell -ExecutionPolicy Bypass -File start.ps1
+```
+
+2. Add to `~/.kiro/settings/mcp.json`:
+```json
+{
+  "mcpServers": {
+    "thor": {
+      "command": "powershell.exe",
+      "args": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "C:/path/to/thor-power/server/start.ps1"],
+      "cwd": "C:/path/to/thor-power",
+      "timeout": 600000,
+      "env": {
+        "USERPROFILE": "${USERPROFILE}",
+        "AWS_DEFAULT_REGION": "us-east-1"
+      }
+    }
+  }
+}
+```
+
+Replace `C:/path/to/thor-power` with the actual path where you cloned the repo. Use forward slashes.

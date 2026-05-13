@@ -1,10 +1,10 @@
 {
   "mcpServers": {
     "thor": {
-      "command": "${powerDir}/server/.venv/bin/python3",
+      "command": "${powerDir}/server/start.sh",
       "timeout": 600000,
       "transport": "stdio",
-      "args": ["-m", "server.thor_mcp_server"],
+      "args": [],
       "cwd": "${powerDir}",
       "env": {
         "HOME": "${env:HOME}",
