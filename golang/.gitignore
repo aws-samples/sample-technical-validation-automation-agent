@@ -1,0 +1,18 @@
+# Build artifacts
+bin/
+dist/
+coverage.out
+
+# Local release env (PATs etc.)
+.release-env
+
+# Claude/Kiro specific
+.claude/settings.local.json
+
+# Root .gitignore ignores .mcp.json globally; un-ignore the symlink we
+# ship in this subdir so contributors get auto-MCP wiring when they
+# open golang/ in Claude Code.
+!.mcp.json
+
+# Sample Docs
+sample/

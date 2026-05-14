@@ -1,0 +1,14 @@
+{
+	"mcpServers": {
+		"thor": {
+			"command": "bin/thor-mcp",
+			"transport": "stdio",
+			"args": [],
+			"timeout": 600000,
+			"env": {
+				"AWS_REGION": "us-west-2",
+				"AWS_PROFILE": "bedrock"
+			}
+		}
+	}
+}

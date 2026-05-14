@@ -1,0 +1,12 @@
+{
+	"mcpServers": {
+		"thor": {
+			"command": "bin/thor-mcp",
+			"args": [],
+			"env": {
+				"AWS_REGION": "us-west-2",
+				"AWS_PROFILE": "bedrock"
+			}
+		}
+	}
+}

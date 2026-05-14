@@ -1,0 +1,1 @@
+../../kiro-power/steering/setup.md

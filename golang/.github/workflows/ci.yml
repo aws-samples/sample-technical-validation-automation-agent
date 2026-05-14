@@ -1,0 +1,58 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "golang/**"
+      - "server/thor/tools/**"
+      - ".github/workflows/ci.yml"
+  pull_request:
+    paths:
+      - "golang/**"
+      - "server/thor/tools/**"
+      - ".github/workflows/ci.yml"
+
+defaults:
+  run:
+    working-directory: golang
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.23.x"
+          cache: true
+          cache-dependency-path: golang/go.sum
+
+      - name: verify prompts in sync with Python
+        run: make verify-prompts
+
+      - name: vet
+        run: make vet
+
+      - name: test
+        run: make test
+
+      - name: build
+        run: make build
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.23.x"
+          cache: true
+          cache-dependency-path: golang/go.sum
+
+      - uses: golangci/golangci-lint-action@v6
+        with:
+          version: latest
+          working-directory: golang
