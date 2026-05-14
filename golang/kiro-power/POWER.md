@@ -1,25 +1,22 @@
 ---
-name: "thor-psa-validator-go"
-displayName: "Thor PSA Validator (Go)"
-description: "Go-native build of the Thor PSA Validator. Single static binary, no Python venv. Validates AWS partner submissions against control requirements using Bedrock Claude and produces structured reports."
-keywords: ["psa", "validation", "aws partner", "bedrock", "competency", "controls", "thor", "go"]
+name: "thor-psa-validator"
+displayName: "Thor PSA Validator"
+description: "Validates AWS partner submissions against the PSA control catalog using Bedrock Claude and produces structured PASS / FAIL / WAIVED reports."
+keywords: ["psa", "validation", "aws partner", "bedrock", "competency", "controls", "thor"]
 author: "PSA Team"
 ---
 
-# Thor PSA Validator (Go)
+# Thor PSA Validator
 
 ## Overview
 
 Thor validates AWS partner competency applications using Amazon Bedrock
-(Claude). It evaluates partner-submitted evidence (Excel checklists, PDFs,
-architecture documents) against control requirements and produces a
-PASS / FAIL / WAIVED report with detailed reasoning.
+(Claude). It evaluates partner-submitted evidence (Excel checklists,
+PDFs, architecture documents) against the PSA control catalog and
+produces a PASS / FAIL / WAIVED report with detailed reasoning.
 
-This is the **Go build** — single static binary, instant startup, no
-Python virtualenv. The Python build still ships at the repo root for
-users who prefer it; both can be installed side-by-side without
-collision (the Python build registers as `thor-psa-validator`, this one
-as `thor-psa-validator-go`).
+Single static binary, instant startup, no external runtime
+dependencies.
 
 ## Quick Start
 
@@ -28,27 +25,11 @@ as `thor-psa-validator-go`).
 The Kiro Power expects `thor-mcp` to be on `PATH` (or you can override
 the command in `mcp.json` with an absolute path).
 
-#### Local build (works today)
-
 ```sh
 cd <repo>/golang
 make build
 make install-local        # installs thor + thor-mcp into ~/.local/bin
                           # override with THOR_INSTALL_DIR=...
-```
-
-#### Homebrew (post-Phase 4, macOS / Linux)
-
-```sh
-brew tap aws-samples/thor
-brew install thor
-```
-
-#### Scoop (post-Phase 4, Windows)
-
-```sh
-scoop bucket add thor https://github.com/aws-samples/scoop-thor
-scoop install thor
 ```
 
 Verify:
@@ -66,7 +47,7 @@ Install this Power from the Kiro Powers panel, or point Kiro at the
 ### 3. Configure MCP env (one-time)
 
 Open `~/.kiro/settings/mcp.json`. Find the
-`power-thor-psa-validator-go-thor` entry that Kiro added when you
+`power-thor-psa-validator-thor` entry that Kiro added when you
 installed the Power, and confirm the `env` block. The Power ships with
 a sensible default `PATH` that covers Homebrew, system bins, and
 `~/.local/bin` (where `make install-local` puts the binary):
@@ -78,8 +59,8 @@ a sensible default `PATH` that covers Homebrew, system bins, and
 }
 ```
 
-If `thor-mcp` is somewhere else, set the `command` field to the absolute
-path instead. **Do not** add `AWS_ACCESS_KEY_ID` /
+If `thor-mcp` is somewhere else, set the `command` field to the
+absolute path instead. **Do not** add `AWS_ACCESS_KEY_ID` /
 `AWS_SECRET_ACCESS_KEY` / `AWS_SESSION_TOKEN` here — those expire and
 break credential auto-refresh. The binary uses the AWS SDK default
 chain, which picks up SSO / `credential_process` / shared profile
@@ -101,9 +82,9 @@ profile other than the default.
 
 ### 5. Reconnect & verify
 
-Reconnect the Thor MCP server in Kiro, then ask Kiro: *"run thor_doctor"*.
-You should see embedded prompts, credentials, and Bedrock model access
-all green.
+Reconnect the Thor MCP server in Kiro, then ask Kiro: *"run
+thor_doctor"*. You should see embedded prompts, credentials, and
+Bedrock model access all green.
 
 ## What Thor can do
 
@@ -112,8 +93,8 @@ all green.
   Bedrock call per file with the full CONTEXT.csv catalog) — auto-built
   by `thor_validate` and reused until files change
 - **Validate** partner submissions control-by-control using Bedrock AI
-  (parallel, ~5 min for ~49 controls; each control sees only its mapped
-  files)
+  (parallel, ~5 min for ~49 controls; each control sees only its
+  mapped files)
 - **Compare** two validation runs over time (diff)
 - **Prep** new partner folders with the right structure
 - **Export** validation reports to self-contained HTML
@@ -130,10 +111,6 @@ all green.
 | `thor_prep` | Create a new partner folder with the right structure |
 | `thor_list_controls` | List available controls, optionally filtered by category |
 | `thor_export` | Export the markdown report to a self-contained HTML file |
-
-> The Python build also offered `thor_run` for end-to-end ticket-driven
-> workflows. The Go build does not — assemble partner folders manually
-> and call `thor_validate` directly.
 
 ## Partner folder structure
 
@@ -153,14 +130,16 @@ PartnerName/
 ## Typical workflow
 
 1. `thor_prep` — create a partner folder with the right structure
-2. Drop the Excel checklist at the root, supporting docs in `supporting_docs/`
+2. Drop the Excel checklist at the root, supporting docs in
+   `supporting_docs/`
 3. `thor_convert` — extract partner responses from Excel to CSV
 4. `thor_validate` — validate all controls in parallel (~5 min). The
-   first run on a folder also builds `evidence_map.json` so each control
-   only sees the files relevant to it; the map is reused until
+   first run on a folder also builds `evidence_map.json` so each
+   control only sees the files relevant to it; the map is reused until
    `supporting_docs/` changes. Run `thor_map` explicitly first if you
    want to inspect the mapping before validation
-5. Review results — full reasoning for every control (PASS, FAIL, WAIVED)
+5. Review results — full reasoning for every control (PASS, FAIL,
+   WAIVED)
 6. `thor_diff` (optional) — compare against an earlier run
 7. `thor_export` — produce HTML for sharing
 
@@ -172,7 +151,7 @@ During validation, tail the progress log:
 tail -f "<partner_folder>/validation_progress.log"
 ```
 
-The Go binary also writes a structured (JSON) log line per control to
+The binary also writes a structured (JSON) log line per control to
 stderr, which Kiro surfaces in the MCP server panel.
 
 ## Credential handling
@@ -180,7 +159,8 @@ stderr, which Kiro surfaces in the MCP server panel.
 The binary uses the AWS SDK default credential chain:
 
 1. Environment variables (`AWS_ACCESS_KEY_ID`, etc.)
-2. `AWS_PROFILE` shared-config profile (including SSO + `credential_process`)
+2. `AWS_PROFILE` shared-config profile (including SSO +
+   `credential_process`)
 3. `~/.aws/credentials` and `~/.aws/config`
 4. EC2/ECS instance metadata
 
@@ -191,18 +171,14 @@ in step 4 above and retry. No server restart needed.
 
 | Error | Fix |
 |-------|-----|
-| `spawn thor-mcp ENOENT` | Binary not on `PATH`. Run `make install-local`, install via Homebrew/Scoop, or set the `command` field in `mcp.json` to an absolute path. |
+| `spawn thor-mcp ENOENT` | Binary not on `PATH`. Run `make install-local`, or set the `command` field in `mcp.json` to an absolute path. |
 | `ExpiredTokenException` / "credentials expired" | Refresh with one of the four commands above and retry. |
 | `AccessDeniedException` on Converse | Your AWS profile doesn't have Bedrock access in the configured region. Check `aws bedrock list-inference-profiles --region <region>`. |
 | `thor_diff` says no reports | You need at least two completed validation runs in `reports/summary/`. |
 
 ## Windows
 
-The Go binary works natively on Windows — no `.ps1` bootstrap needed.
-Install via Scoop (recommended) or download the archive from GitHub
-Releases. SmartScreen will prompt on first run for direct downloads;
-"More info → Run anyway" once.
-
+The binary works natively on Windows — no shell bootstrap needed.
 The `mcp.json` shipped here uses POSIX-flavored paths in `PATH`; on
 Windows replace the `PATH` entry with your usual Windows paths (or
 delete it entirely and rely on the system `PATH`).

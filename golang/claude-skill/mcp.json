@@ -1,7 +1,7 @@
 {
 	"mcpServers": {
 		"thor": {
-			"command": "bin/thor-mcp",
+			"command": "thor-mcp",
 			"args": [],
 			"env": {
 				"AWS_REGION": "us-west-2",

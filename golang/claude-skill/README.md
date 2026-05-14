@@ -1,20 +1,14 @@
-# Thor PSA Validator — Claude Code (Go build)
+# Thor PSA Validator — Claude Code integration
 
-Self-contained Claude Code integration for the Go port of Thor.
-Drop-in replacement for the Python `claude-skill/` at the repo root —
-pick whichever you prefer, install side-by-side, or skip the integration
-entirely and call `thor` from a shell.
-
-> The Python build still lives at the repo root and is unaffected by
-> anything in this directory. See the root `README.md` for the Python
-> alternative.
+Self-contained Claude Code integration for Thor: an MCP config, a
+project context file, and a validation skill — copy what you need into
+the project where you'll run Claude Code, or open this directory
+directly when iterating on Thor itself.
 
 ## Step 1 — Install the binary
 
-Pick one. Each gives you a `thor-mcp` executable on `PATH`, which is what
-the bundled `mcp.json` invokes.
-
-### a) Local build (maintainer / contributor — works today)
+You need a `thor-mcp` executable on `PATH`. The bundled `mcp.json`
+invokes the binary by name; an absolute path works too.
 
 ```sh
 cd <repo>/golang
@@ -26,27 +20,6 @@ make install-local        # copies bin/thor and bin/thor-mcp to ~/.local/bin
 If `~/.local/bin` isn't on your `PATH`, the install target prints the
 exact line to add to your shell rc.
 
-### b) Homebrew (post-Phase 4)
-
-```sh
-brew tap aws-samples/thor       # repo TBD; see root PLAN.md Phase 4C
-brew install thor
-```
-
-### c) Scoop (post-Phase 4, Windows)
-
-```sh
-scoop bucket add thor https://github.com/aws-samples/scoop-thor
-scoop install thor
-```
-
-### d) Direct download (any OS, post-Phase 4)
-
-Grab the archive for your platform from GitHub Releases, unpack, and put
-`thor` + `thor-mcp` somewhere on your `PATH`. macOS / Windows users will
-hit a Gatekeeper / SmartScreen warning on first run — see the root
-`PLAN.md` Phase 4E for bypass steps.
-
 Verify:
 
 ```sh
@@ -57,16 +30,16 @@ thor doctor
 
 ## Step 2 — Wire Claude Code to `thor-mcp`
 
-The simplest path is to copy the bundled MCP config into the project where
-you'll run Claude Code:
+Copy the bundled MCP config into the project where you'll run Claude
+Code:
 
 ```sh
 cp golang/claude-skill/mcp.json /path/to/your/project/.mcp.json
 ```
 
-The bundled config assumes `thor-mcp` is on `PATH`. If you installed
-elsewhere or want to test a specific build, edit the `command` field to an
-absolute path:
+The bundled config invokes `thor-mcp` from `PATH`. If you installed
+elsewhere or want to test a specific build, edit the `command` field to
+an absolute path:
 
 ```json
 {
@@ -80,12 +53,15 @@ absolute path:
 }
 ```
 
-Set `AWS_PROFILE` in the `env` block too if you don't want to rely on the
-default profile.
+Set `AWS_PROFILE` in the `env` block too if you don't want to rely on
+the default profile. Do not put long-lived `AWS_ACCESS_KEY_ID` /
+`AWS_SECRET_ACCESS_KEY` / `AWS_SESSION_TOKEN` here — those expire and
+prevent the SDK's automatic credential refresh.
 
 ## Step 3 — Add project context (optional)
 
-Copy `CLAUDE.md` so Claude always has Thor context loaded for that project:
+Copy `CLAUDE.md` so Claude always has Thor context loaded for that
+project:
 
 ```sh
 cp golang/claude-skill/CLAUDE.md /path/to/your/project/CLAUDE.md
@@ -115,12 +91,12 @@ see [Working inside this repo](#working-inside-this-repo) below.
 
 ## Step 5 — Verify
 
-In Claude Code, say: *"run thor_doctor"*. You should see all checks pass:
-embedded prompts, AWS credentials, Bedrock model access in the active
-region.
+In Claude Code, say: *"run thor_doctor"*. You should see all checks
+pass: embedded prompts, AWS credentials, Bedrock model access in the
+active region.
 
-If credentials are missing or expired, refresh with **whichever applies**
-— pick one:
+If credentials are missing or expired, refresh with **whichever
+applies** — pick one:
 
 ```
 aws sso login --profile <profile>     # SSO users
@@ -152,7 +128,7 @@ the change.
 Skills live canonically under `claude-skill/skills/<name>/SKILL.md`,
 matching the layout Claude Code expects (`.claude/skills/<name>/SKILL.md`).
 The `.claude/skills` symlink above means dropping a new skill directory
-into `claude-skill/skills/` is the only step needed — no extra wiring.
+into `claude-skill/skills/` is the only step needed.
 
 From the `golang/` directory:
 
@@ -162,8 +138,9 @@ mkdir -p claude-skill/skills/$SKILL
 $EDITOR claude-skill/skills/$SKILL/SKILL.md
 ```
 
-`SKILL.md` MUST start with frontmatter — `name` must match the directory
-name, and `description` is what Claude scans to decide when to invoke:
+`SKILL.md` MUST start with frontmatter — `name` must match the
+directory name, and `description` is what Claude scans to decide when
+to invoke:
 
 ```markdown
 ---
@@ -204,12 +181,12 @@ Notes:
 
 ```
 claude-skill/
-├── README.md                  # this file
-├── mcp.json                   # Claude Code MCP config — copy as .mcp.json
-├── CLAUDE.md                  # project context — copy as CLAUDE.md
+├── README.md                        # this file
+├── mcp.json                         # Claude Code MCP config — copy as .mcp.json
+├── CLAUDE.md                        # project context — copy as CLAUDE.md
 └── skills/
     └── thor-validate/
-        └── SKILL.md           # validation workflow skill
+        └── SKILL.md                 # validation workflow skill
 ```
 
 ## Troubleshooting

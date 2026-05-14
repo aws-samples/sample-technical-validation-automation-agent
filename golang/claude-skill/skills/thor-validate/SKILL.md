@@ -1,9 +1,9 @@
 ---
 name: thor-validate
-description: Validate AWS partner competency applications using Thor (Go build). Use when the user wants to validate a partner submission, run thor, check Thor health, convert checklists, compare results, or export reports.
+description: Validate AWS partner competency applications using Thor. Use when the user wants to validate a partner submission, run thor, check Thor health, convert checklists, build an evidence map, compare results, or export reports.
 ---
 
-# Thor PSA Validator (Go)
+# Thor PSA Validator
 
 ## Available MCP Tools
 
@@ -18,39 +18,36 @@ description: Validate AWS partner competency applications using Thor (Go build).
 | `thor_list_controls` | List controls, optionally filtered by category |
 | `thor_export` | Export the markdown report to HTML for sharing |
 
-> **Note:** the Python build also offered `thor_run` for end-to-end
-> ticket-driven workflows. That tool is not in the Go build — drop the
-> partner Excel + supporting docs in a folder, then call `thor_validate`.
-
 ## Setup (if `thor_doctor` fails)
 
-1. Call `thor_doctor` to diagnose (also accepts `--json` style structured output).
-2. If credentials are missing or expired, ask the user to refresh and retry.
-   Tell them to run **whichever applies** — they only need one:
+1. Call `thor_doctor`. It returns a structured report covering embedded
+   prompts, AWS credentials, and Bedrock access.
+2. If credentials are missing or expired, ask the user to refresh and
+   retry. Tell them to run **whichever applies** — they only need one:
    ```
    aws sso login --profile <profile>     # SSO users
    aws configure                         # static keys
    isengardcli assume <account>          # Amazon Cloud Desktop
    ada credentials update                # alternative for Cloud Desktop
    ```
-3. If the server isn't connected, verify the project's `.mcp.json` points
-   at a `thor-mcp` binary that's on `PATH` (or use an absolute path).
-   Re-run `thor_doctor`.
+3. If the server isn't connected, verify the project's `.mcp.json`
+   points at a `thor-mcp` binary that's on `PATH` (or use an absolute
+   path). Re-run `thor_doctor`.
 
 ## Validation Workflow
 
 ### Step 1: Identify partner folder
 - Ask for the path, or offer `thor_prep` to create one.
-- Folder should contain: Excel checklist (`.xlsx`) at root, supporting docs
-  in `supporting_docs/`.
+- Folder should contain: Excel checklist (`.xlsx`) at root, supporting
+  docs in `supporting_docs/`.
 
 ### Step 2: Determine parameters
-- **Application type**: `SERVICE` or `SOFTWARE`. The Excel hints at this in
-  most cases — pick `SOFTWARE` if uncertain.
-- **Designation category**: Generative AI Applications, Foundation Models
-  and App Development, Infrastructure and Data, Agentic AI Tools, Agentic
-  AI Applications, Agentic AI Consulting Services, or Generative AI
-  Consulting Services.
+- **Application type**: `SERVICE` or `SOFTWARE`. The Excel hints at
+  this in most cases — pick `SOFTWARE` if uncertain.
+- **Designation category**: Generative AI Applications, Foundation
+  Models and App Development, Infrastructure and Data, Agentic AI Tools,
+  Agentic AI Applications, Agentic AI Consulting Services, or Generative
+  AI Consulting Services.
 
 ### Step 3: Convert Excel to CSV
 - Call `thor_convert` with `partner_folder` and `app_type`.
@@ -64,7 +61,7 @@ description: Validate AWS partner competency applications using Thor (Go build).
   catalog) so each control sees only relevant evidence. Subsequent runs
   reuse the map until files under `supporting_docs/` change. Tell the
   user this is normal and only happens once per folder.
-- Runs all applicable controls in parallel. The Go binary writes a
+- Runs all applicable controls in parallel. The binary writes a
   per-control structured log line to stderr (and to
   `<partner_folder>/validation_progress.log`) — the user can `tail -f`
   the file to watch progress.
@@ -86,10 +83,13 @@ description: Validate AWS partner competency applications using Thor (Go build).
   `unmapped` files (no control assigned — review for relevance).
 - **Partial re-run**: pass specific control IDs via `controls`
   (space-separated).
-- **Consensus mode**: set `consensus: 3` for borderline cases (runs 3x,
-  majority vote; the Python early-stop semantics is preserved).
+- **Consensus mode**: set `consensus: 3` for borderline cases (runs
+  3x, majority vote; if every control passes runs 1 and 2, run 3 is
+  skipped).
 - **Credential expiry**: just refresh and retry — no restart needed.
-- **Compare runs**: `thor_diff` with `mode: latest` (default), `mode: all`
-  (timeline table), or `mode: custom` with `run1` / `run2` timestamps.
-- **HTML export**: `thor_export` writes a self-contained HTML next to the
-  markdown report. Pass `report` to pick a specific timestamped run.
+- **Compare runs**: `thor_diff` with `mode: latest` (default),
+  `mode: all` (timeline table), or `mode: custom` with `run1` /
+  `run2` timestamps.
+- **HTML export**: `thor_export` writes a self-contained HTML next to
+  the markdown report. Pass `report` to pick a specific timestamped
+  run.

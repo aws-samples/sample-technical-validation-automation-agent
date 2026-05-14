@@ -3,14 +3,14 @@
 ## When to Use
 
 Use this AUTOMATICALLY when:
-- The user just installed the Thor (Go) Power and is using it for the first time
+- The user just installed the Thor Power and is using it for the first time
 - The Thor MCP server fails to connect
 - `thor_doctor` shows any failing checks
 - The user mentions setup, configuration, binary install, or credential issues
 
 ## First-Time Setup (do this proactively)
 
-When a user first activates the Thor Go Power, do the following steps
+When a user first activates the Thor Power, do the following steps
 WITHOUT waiting to be asked:
 
 ### Step 1: Check if the MCP server is connected
@@ -18,8 +18,8 @@ WITHOUT waiting to be asked:
 Try calling `thor_doctor`. If it returns a structured report, skip to
 Step 4.
 
-If the server is NOT connected (you'll get an error), the user is most
-likely missing the `thor-mcp` binary on `PATH`. Continue to Step 2.
+If the server is NOT connected (you'll get an error), the user is
+most likely missing the `thor-mcp` binary on `PATH`. Continue to Step 2.
 
 ### Step 2: Verify the binary is installed
 
@@ -30,24 +30,21 @@ which thor-mcp
 thor-mcp --version
 ```
 
-If `which thor-mcp` returns nothing:
+If `which thor-mcp` returns nothing, guide them through a local build:
 
-- **Maintainer / contributor build** — guide them to:
-  ```sh
-  cd <repo>/golang
-  make install-local
-  ```
-  Then have them confirm `~/.local/bin` is on their `PATH` (the install
-  target prints the exact rc-file line if not).
-- **Homebrew (macOS / Linux, post-Phase 4)** — `brew tap aws-samples/thor && brew install thor`
-- **Scoop (Windows, post-Phase 4)** — `scoop bucket add thor https://github.com/aws-samples/scoop-thor && scoop install thor`
-- **Direct download** — grab the archive from GitHub Releases, extract,
-  put `thor` and `thor-mcp` in a directory that's on `PATH`.
+```sh
+cd <repo>/golang
+make build
+make install-local
+```
+
+Then have them confirm `~/.local/bin` is on their `PATH` (the install
+target prints the exact rc-file line if not).
 
 ### Step 3: Configure MCP env block
 
 The user needs to verify `~/.kiro/settings/mcp.json`. Find the
-`power-thor-psa-validator-go-thor` entry (Kiro creates it on Power
+`power-thor-psa-validator-thor` entry (Kiro creates it on Power
 install) and confirm the `env` block. The default the Power ships with
 is:
 
@@ -65,7 +62,7 @@ to its absolute path instead.
 
 **IMPORTANT:** Do NOT add `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`,
 or `AWS_SESSION_TOKEN` to the env block. These expire and prevent
-auto-refresh. The Go binary uses the AWS SDK default chain, which
+auto-refresh. The binary uses the AWS SDK default chain, which
 discovers credentials automatically.
 
 After editing, tell them to reconnect the Thor MCP server (Kiro panel →
@@ -73,8 +70,8 @@ MCP Servers → reconnect).
 
 ### Step 4: AWS Credentials
 
-Ask the user: *"How do you get your AWS credentials?"* Then tell them to
-run **whichever applies** — they only need one:
+Ask the user: *"How do you get your AWS credentials?"* Then tell them
+to run **whichever applies** — they only need one:
 
 ```
 aws sso login --profile <profile>     # SSO users
@@ -111,11 +108,3 @@ and that the user actually ran a credential command in Step 4.
 | `AWS Credentials: Missing` | Default chain found nothing | Run one of the four refresh commands above; do not add static keys to `env` |
 | `ExpiredTokenException` | Credentials timed out | Re-run the refresh command and retry — no server restart needed |
 | `AccessDeniedException` on Converse | Profile lacks Bedrock access in the active region | `aws bedrock list-inference-profiles --region <region>` to verify, or pick a different profile via `AWS_PROFILE` |
-
-## Versus the Python build
-
-If the user already has the Python Power installed (`thor-psa-validator`),
-the Go Power (`thor-psa-validator-go`) installs alongside it without
-collision. They're free to use either or both — same partner folder
-structure, same `validation_summary.md` format. The Go build starts
-instantly and needs no Python venv.
