@@ -25,14 +25,13 @@ import (
 const DefaultModelID = "global.anthropic.claude-sonnet-4-5-20250929-v1:0"
 
 // DefaultConcurrency caps in-flight Converse calls during ValidateBatch.
-// Mirrors Python `ThreadPoolExecutor(max_workers=15)` but tuned a little
-// lower since Bedrock now imposes regional Converse RPS limits.
-const DefaultConcurrency = 10
+// Matches Python `ThreadPoolExecutor(max_workers=15)`.
+const DefaultConcurrency = 15
 
 // DefaultPerCallTimeout is the wall-clock budget for a single Converse
-// call (PLAN.md 1E.6). 120s matches the Python httpcore default plus
-// padding for Anthropic's longest reasoning-mode replies.
-const DefaultPerCallTimeout = 120 * time.Second
+// call. 180s accommodates large evidence payloads (multi-page PDFs)
+// that can take longer for the model to process.
+const DefaultPerCallTimeout = 180 * time.Second
 
 // DefaultMaxAttempts is the SDK retry budget. PLAN.md 1E.6 fixes this at 6.
 const DefaultMaxAttempts = 6

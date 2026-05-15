@@ -1,7 +1,7 @@
 ---
 name: "thor-psa-validator"
 displayName: "Thor PSA Validator"
-description: "AI-powered partner competency validation tool for PSA team. Validates AWS partner submissions against control requirements using Bedrock Claude, compares results with AWS/Loki, and generates structured reports."
+description: "Validates AWS partner submissions against the PSA control catalog using Bedrock Claude and produces structured PASS / FAIL / WAIVED reports."
 keywords: ["psa", "validation", "aws partner", "bedrock", "competency", "controls", "thor"]
 author: "PSA Team"
 ---
@@ -10,148 +10,175 @@ author: "PSA Team"
 
 ## Overview
 
-Thor validates AWS partner competency applications using Amazon Bedrock (Claude). It evaluates partner-submitted evidence (Excel checklists, PDFs, architecture documents) against control requirements and produces a pass/fail/waived report with detailed reasoning.
+Thor validates AWS partner competency applications using Amazon Bedrock
+(Claude). It evaluates partner-submitted evidence (Excel checklists,
+PDFs, architecture documents) against the PSA control catalog and
+produces a PASS / FAIL / WAIVED report with detailed reasoning.
+
+Single static binary, instant startup, no external runtime
+dependencies.
 
 ## Quick Start
 
-### 1. Install the Power
+### 1. Install the binary
 
-Install the Thor power in Kiro via the Powers panel.
+The Kiro Power expects `thor-mcp` to be on `PATH` (or you can override
+the command in `mcp.json` with an absolute path).
 
-### 2. Configure MCP (one-time)
+```sh
+cd <repo>/golang
+make build
+make install-local        # installs thor + thor-mcp into ~/.local/bin
+                          # override with THOR_INSTALL_DIR=...
+```
 
-After installing, edit `~/.kiro/settings/mcp.json` and update the `power-thor-power-thor` entry's `env` block:
+Verify:
+
+```sh
+thor --version
+thor doctor
+```
+
+### 2. Install the Power
+
+Install this Power from the Kiro Powers panel, or point Kiro at the
+`golang/kiro-power/` directory directly.
+
+### 3. Configure MCP env (one-time)
+
+Open `~/.kiro/settings/mcp.json`. Find the
+`power-thor-psa-validator-thor` entry that Kiro added when you
+installed the Power, and confirm the `env` block. The Power ships with
+a sensible default `PATH` that covers Homebrew, system bins, and
+`~/.local/bin` (where `make install-local` puts the binary):
 
 ```json
 "env": {
-  "HOME": "/Users/yourname",
-  "AWS_DEFAULT_REGION": "us-east-1",
-  "PATH": "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+  "AWS_REGION": "us-east-1",
+  "PATH": "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:${env:HOME}/.local/bin:${env:HOME}/go/bin"
 }
 ```
 
-Replace `/Users/yourname` with your actual home directory path. That's it.
+If `thor-mcp` is somewhere else, set the `command` field to the
+absolute path instead. **Do not** add `AWS_ACCESS_KEY_ID` /
+`AWS_SECRET_ACCESS_KEY` / `AWS_SESSION_TOKEN` here — those expire and
+break credential auto-refresh. The binary uses the AWS SDK default
+chain, which picks up SSO / `credential_process` / shared profile
+automatically.
 
-**Why HOME?** MCP server processes don't inherit your shell environment. boto3 needs `HOME` to find `~/.aws/credentials` and `~/.aws/config`.
+### 4. Get AWS credentials
 
-**Why PATH?** So credential helpers like `isengardcli` and `aws` CLI can be found.
+Pick **one** — whichever applies to you:
 
-### 3. Get AWS Credentials
+```
+aws sso login --profile <profile>     # SSO users
+aws configure                         # static keys
+isengardcli assume <account>          # Amazon Cloud Desktop
+ada credentials update                # alternative for Cloud Desktop
+```
 
-Run whatever you normally use:
-- **Isengard**: `isengardcli assume <account>`
-- **SSO**: `aws sso login --profile <profile>`
-- **Ada**: `ada credentials update`
+You don't need to set `AWS_PROFILE` in the env block unless you want a
+profile other than the default.
 
-Thor automatically discovers `credential_process` profiles in `~/.aws/config` — no need to specify which profile to use.
+### 5. Reconnect & verify
 
-### 4. Reconnect & Verify
+Reconnect the Thor MCP server in Kiro, then ask Kiro: *"run
+thor_doctor"*. You should see embedded prompts, credentials, and
+Bedrock model access all green.
 
-Reconnect the Thor MCP server in Kiro, then ask Kiro to run `thor_doctor`. You should see 7/7 checks passing.
-
-**Note:** On first connect, Thor automatically creates a Python virtual environment and installs dependencies. This takes ~30 seconds and only happens once.
-
-
-## What Thor Can Do
+## What Thor can do
 
 - **Convert** Excel checklists to structured CSV for validation
-- **Validate** partner submissions control-by-control using Bedrock AI (parallel, ~5 min for 49 controls)
-- **Run** end-to-end workflows: download from S3 → convert → validate → generate report
-- **Compare** Thor results against AWS/Loki automated results (diff)
-- **Prep** set up new partner folders with the right structure
+- **Map** supporting docs to the controls they're evidence for (one
+  Bedrock call per file with the full CONTEXT.csv catalog) — auto-built
+  by `thor_validate` and reused until files change
+- **Validate** partner submissions control-by-control using Bedrock AI
+  (parallel, ~5 min for ~49 controls; each control sees only its
+  mapped files)
+- **Compare** two validation runs over time (diff)
+- **Prep** new partner folders with the right structure
+- **Export** validation reports to self-contained HTML
 
-## Available Tools
+## Available tools
 
 | Tool | Description |
 |------|-------------|
-| `thor_doctor` | Health check — verifies Python, AWS credentials, dependencies |
-| `thor_convert` | Convert Excel checklist (.xlsx) to CSV |
+| `thor_doctor` | Health check — embedded prompts, AWS credentials, Bedrock model access |
+| `thor_convert` | Convert Excel checklist (`.xlsx`) to CSV |
+| `thor_map` | Build/refresh the control→files evidence map (auto-built by `thor_validate`) |
 | `thor_validate` | Run Bedrock AI validation (parallel, all controls, full reasoning) |
-| `thor_run` | Full end-to-end: download from S3 → convert → validate → report |
-| `thor_diff` | Compare Thor results vs AWS/Loki automated results |
+| `thor_diff` | Compare two validation runs (latest, custom timestamps, or full timeline) |
 | `thor_prep` | Create a new partner folder with the right structure |
 | `thor_list_controls` | List available controls, optionally filtered by category |
+| `thor_export` | Export the markdown report to a self-contained HTML file |
 
-## Partner Folder Structure
+## Partner folder structure
 
 ```
 PartnerName/
 ├── checklist.xlsx              # Excel checklist (root level)
 ├── partner_responses.csv       # Generated by thor_convert
+├── evidence_map.json           # Generated by thor_map (or auto by thor_validate)
 ├── supporting_docs/            # PDFs, architecture diagrams, etc.
 ├── validation_summary.md       # Generated after validation
 ├── validation_progress.log     # Live progress during validation
-└── reports/summary/            # Archived timestamped reports
+└── reports/
+    ├── run_<ts>.json           # Auditable per-run manifest
+    └── summary/                # Timestamped archived reports
 ```
 
-## Typical Workflow
+## Typical workflow
 
-1. `thor_prep` — create partner folder with the right structure
-2. Place Excel checklist at root, supporting docs in `supporting_docs/`
+1. `thor_prep` — create a partner folder with the right structure
+2. Drop the Excel checklist at the root, supporting docs in
+   `supporting_docs/`
 3. `thor_convert` — extract partner responses from Excel to CSV
-4. `thor_validate` — validate all controls in parallel (~5 min)
-5. Review results — full reasoning for every control (pass, fail, and waived)
-6. `thor_diff` (optional) — compare against AWS/Loki results
+4. `thor_validate` — validate all controls in parallel (~5 min). The
+   first run on a folder also builds `evidence_map.json` so each
+   control only sees the files relevant to it; the map is reused until
+   `supporting_docs/` changes. Run `thor_map` explicitly first if you
+   want to inspect the mapping before validation
+5. Review results — full reasoning for every control (PASS, FAIL,
+   WAIVED)
+6. `thor_diff` (optional) — compare against an earlier run
+7. `thor_export` — produce HTML for sharing
 
-## Monitoring Progress
+## Monitoring progress
 
 During validation, tail the progress log:
-```bash
+
+```sh
 tail -f "<partner_folder>/validation_progress.log"
 ```
 
-## Credential Handling
+The binary also writes a structured (JSON) log line per control to
+stderr, which Kiro surfaces in the MCP server panel.
 
-Thor uses lazy credential loading — it creates a fresh boto3 session on every API call. This means:
-- If credentials expire mid-run, just refresh them (`isengardcli assume`, `aws sso login`, etc.) and retry
-- No server restart needed after refreshing credentials
-- If expired credentials are detected, Thor returns a clear message telling you what to do
+## Credential handling
 
-Smart credential resolution order:
-1. `AWS_PROFILE` env var (if explicitly set)
-2. Auto-discover `credential_process` profiles in `~/.aws/config` (isengard, SSO)
-3. Default boto3 chain (`~/.aws/credentials`, env vars, instance metadata)
+The binary uses the AWS SDK default credential chain:
+
+1. Environment variables (`AWS_ACCESS_KEY_ID`, etc.)
+2. `AWS_PROFILE` shared-config profile (including SSO +
+   `credential_process`)
+3. `~/.aws/credentials` and `~/.aws/config`
+4. EC2/ECS instance metadata
+
+If credentials expire mid-run, refresh with whichever command you used
+in step 4 above and retry. No server restart needed.
 
 ## Troubleshooting
 
 | Error | Fix |
 |-------|-----|
-| `spawn bash ENOENT` | Use `/bin/bash` (absolute) in mcp.json command field |
-| `spawn cmd.exe ENOENT` (Windows) | See Windows Setup below |
-| `AWS Credentials: Missing` | Set `HOME` in env block so boto3 can find `~/.aws/` |
-| `ExpiredTokenException` | Refresh creds (`isengardcli assume` / `aws sso login`) and retry. Don't hardcode keys in env. |
-| `Bedrock access denied` | IAM needs `bedrock:InvokeModel` on `anthropic.*` models |
-| `No Excel file found` | Place .xlsx in root of partner folder |
-| `PDF too large` | `brew install qpdf` (Mac) — needed for PDFs over 80 pages |
+| `spawn thor-mcp ENOENT` | Binary not on `PATH`. Run `make install-local`, or set the `command` field in `mcp.json` to an absolute path. |
+| `ExpiredTokenException` / "credentials expired" | Refresh with one of the four commands above and retry. |
+| `AccessDeniedException` on Converse | Your AWS profile doesn't have Bedrock access in the configured region. Check `aws bedrock list-inference-profiles --region <region>`. |
+| `thor_diff` says no reports | You need at least two completed validation runs in `reports/summary/`. |
 
-## Windows Setup
+## Windows
 
-> **Platform support:** Thor is developed and tested on macOS/Linux. Windows works via the manual setup below. The Power's auto-config (one-click install) currently only works on macOS/Linux due to a Kiro platform limitation where Power-managed MCP servers don't inherit system paths on Windows.
-
-The Thor Power's auto-config uses a bash script which doesn't work natively on Windows. To use Thor on Windows, add the server manually to your user-level MCP config:
-
-1. Run the bootstrap script once in PowerShell:
-```powershell
-cd <path-to-thor-power>/server
-powershell -ExecutionPolicy Bypass -File start.ps1
-```
-
-2. Add to `~/.kiro/settings/mcp.json`:
-```json
-{
-  "mcpServers": {
-    "thor": {
-      "command": "powershell.exe",
-      "args": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "C:/path/to/thor-power/server/start.ps1"],
-      "cwd": "C:/path/to/thor-power",
-      "timeout": 600000,
-      "env": {
-        "USERPROFILE": "${USERPROFILE}",
-        "AWS_DEFAULT_REGION": "us-east-1"
-      }
-    }
-  }
-}
-```
-
-Replace `C:/path/to/thor-power` with the actual path where you cloned the repo. Use forward slashes.
+The binary works natively on Windows — no shell bootstrap needed.
+The `mcp.json` shipped here uses POSIX-flavored paths in `PATH`; on
+Windows replace the `PATH` entry with your usual Windows paths (or
+delete it entirely and rely on the system `PATH`).

@@ -1,1 +1,0 @@
-../../kiro-power/steering/validation.md

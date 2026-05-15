@@ -1,16 +1,14 @@
 {
-  "mcpServers": {
-    "thor": {
-      "command": "${powerDir}/server/start.sh",
-      "timeout": 600000,
-      "transport": "stdio",
-      "args": [],
-      "cwd": "${powerDir}",
-      "env": {
-        "HOME": "${env:HOME}",
-        "AWS_DEFAULT_REGION": "us-east-1",
-        "PATH": "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
-      }
-    }
-  }
+	"mcpServers": {
+		"thor": {
+			"command": "thor-mcp",
+			"transport": "stdio",
+			"args": [],
+			"timeout": 600000,
+			"env": {
+				"AWS_REGION": "us-east-1",
+				"PATH": "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:${env:HOME}/.local/bin"
+			}
+		}
+	}
 }

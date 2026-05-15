@@ -343,7 +343,7 @@ func makeValidateHandler(factory ValidatorFactory) func(context.Context, validat
 		}
 
 		startedAt := time.Now().UTC()
-		results, err := v.ValidateBatch(ctx, controlIDs, in.PartnerFolder, validator.BatchOptions{
+		results, err := v.ValidateBatchWithFallback(ctx, controlIDs, in.PartnerFolder, validator.BatchOptions{
 			Concurrency:   concurrency,
 			ConsensusRuns: consensus,
 		})

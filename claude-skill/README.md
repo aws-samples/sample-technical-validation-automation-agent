@@ -1,109 +1,200 @@
-# Thor PSA Validator — Claude Code Setup
+# Thor PSA Validator — Claude Code integration
 
-Use this if you're running Thor with **Claude Code** (CLI, desktop app, or IDE extension).
-For Kiro, use the root-level `POWER.md` and `mcp.json` instead.
+Self-contained Claude Code integration for Thor: an MCP config, a
+project context file, and a validation skill — copy what you need into
+the project where you'll run Claude Code, or open this directory
+directly when iterating on Thor itself.
 
-## Quick Start
+## Step 1 — Install the binary
 
-### 1. Install dependencies (one-time)
+You need a `thor-mcp` executable on `PATH`. The bundled `mcp.json`
+invokes the binary by name; an absolute path works too.
 
-```bash
-cd <repo-root>/server
-./start.sh  # creates venv + installs deps automatically
+```sh
+cd <repo>
+make build
+make install-local        # copies bin/thor and bin/thor-mcp to ~/.local/bin
+                          # override with THOR_INSTALL_DIR=...
 ```
 
-Or manually:
-```bash
-cd <repo-root>/server
-python3 -m venv .venv
-.venv/bin/pip install -r requirements.txt
+If `~/.local/bin` isn't on your `PATH`, the install target prints the
+exact line to add to your shell rc.
+
+Verify:
+
+```sh
+thor --version
+thor-mcp --version
+thor doctor
 ```
 
-### 2. Register the MCP server
+## Step 2 — Wire Claude Code to `thor-mcp`
 
-Copy `mcp.json` from this directory into your project's `.mcp.json`:
+Copy the bundled MCP config into the project where you'll run Claude
+Code:
 
-```bash
+```sh
 cp claude-skill/mcp.json /path/to/your/project/.mcp.json
 ```
 
-**Edit the paths** in `.mcp.json`:
-- Replace `/EDIT_THIS/path/to/thor-power` with the actual path to this repo
-- Replace `/EDIT_THIS/Users/yourname` with your home directory
-- Replace `YOUR_BEDROCK_PROFILE` with your AWS profile that has Bedrock access
+The bundled config invokes `thor-mcp` from `PATH` with `us-east-1`
+as the default region. It uses the AWS SDK default credential chain
+(no profile hardcoded), so it works out of the box if you have valid
+credentials via SSO, `credential_process`, or env vars.
 
-### 3. AWS Credentials (important — different from Kiro)
-
-**Claude Code injects its own `AWS_PROFILE` into MCP server processes.** This overrides Thor's smart credential auto-discovery. You MUST explicitly set `AWS_PROFILE` in the `.mcp.json` env block to the profile that has Bedrock permissions.
+If you need a specific profile or region, edit the `env` block:
 
 ```json
-"env": {
-  "HOME": "/Users/yourname",
-  "AWS_PROFILE": "your-bedrock-profile-name",
-  "AWS_DEFAULT_REGION": "us-east-1",
-  "PATH": "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+{
+  "mcpServers": {
+    "thor": {
+      "command": "thor-mcp",
+      "args": [],
+      "env": {
+        "AWS_REGION": "us-east-1",
+        "AWS_PROFILE": "your-profile-name"
+      }
+    }
+  }
 }
 ```
 
-To find your Bedrock profile:
-```bash
-# If you use isengard:
-isengardcli assume <your-account>
-# Then check which profile was created:
-grep "credential_process" ~/.aws/config
-# Use that profile name (e.g., "myaccount-Admin")
-```
+## Step 3 — Add project context (optional)
 
-**Why this is different from Kiro:** In Kiro, the MCP server's environment is clean — Thor auto-discovers `credential_process` profiles from `~/.aws/config`. In Claude Code, the host injects its own AWS credentials into the MCP process, which may not have Bedrock access. Setting `AWS_PROFILE` explicitly overrides this.
+Copy `CLAUDE.md` so Claude always has Thor context loaded for that
+project:
 
-### 4. (Optional) Add CLAUDE.md context
-
-Copy `CLAUDE.md` to your working project root so Claude always has Thor context:
-
-```bash
+```sh
 cp claude-skill/CLAUDE.md /path/to/your/project/CLAUDE.md
 ```
 
-### 5. (Optional) Install the skill
+## Step 4 — Install the validation skill (optional)
 
-```bash
+```sh
 mkdir -p /path/to/your/project/.claude/skills
-cp claude-skill/skills/thor-validate.md /path/to/your/project/.claude/skills/
+cp -R claude-skill/skills/thor-validate /path/to/your/project/.claude/skills/
 ```
 
-### 6. Verify
+Claude Code discovers skills as `.claude/skills/<name>/SKILL.md` — the
+file MUST be named `SKILL.md` and live inside a directory named for the
+skill. When the user mentions validating a partner submission, Claude
+Code will auto-invoke this skill.
 
-Start Claude Code and say: "run thor_doctor"
+If you'd rather keep all Thor assets in one place and let Claude Code
+read through a symlink, replace the copy above with:
 
-All 7 checks should pass. If you get `AccessDeniedException` on validation, your `AWS_PROFILE` doesn't have Bedrock permissions — double-check step 3.
+```sh
+ln -s /absolute/path/to/golang/claude-skill/skills /path/to/your/project/.claude/skills
+```
+
+This is exactly how `golang/.claude/skills` is wired in this repo —
+see [Working inside this repo](#working-inside-this-repo) below.
+
+## Step 5 — Verify
+
+In Claude Code, say: *"run thor_doctor"*. You should see all checks
+pass: embedded prompts, AWS credentials, Bedrock model access in the
+active region.
+
+If credentials are missing or expired, refresh with **whichever
+applies** — pick one:
+
+```
+aws sso login --profile <profile>     # SSO users
+aws configure                         # static keys
+isengardcli assume <account>          # Amazon Cloud Desktop
+ada credentials update                # alternative for Cloud Desktop
+```
+
+No restart needed — the Bedrock client picks up refreshed credentials
+on the next call.
+
+## Working inside this repo
+
+If you're iterating on Thor itself, open the repo root in
+Claude Code directly. The `.claude/skills` directory is a single
+symlink pointing at `claude-skill/skills/`:
+
+```
+golang/.claude/skills -> ../claude-skill/skills
+```
+
+That means every skill under `claude-skill/skills/<name>/SKILL.md`
+shows up automatically — no per-skill symlink, no copying. Edit any
+`SKILL.md` in `claude-skill/skills/` and reload Claude Code to pick up
+the change.
+
+## Adding a new skill
+
+Skills live canonically under `claude-skill/skills/<name>/SKILL.md`,
+matching the layout Claude Code expects (`.claude/skills/<name>/SKILL.md`).
+The `.claude/skills` symlink above means dropping a new skill directory
+into `claude-skill/skills/` is the only step needed.
+
+From the `golang/` directory:
+
+```sh
+SKILL=my-new-skill
+mkdir -p claude-skill/skills/$SKILL
+$EDITOR claude-skill/skills/$SKILL/SKILL.md
+```
+
+`SKILL.md` MUST start with frontmatter — `name` must match the
+directory name, and `description` is what Claude scans to decide when
+to invoke:
+
+```markdown
+---
+name: my-new-skill
+description: One sentence on when this skill applies. Be specific and
+  include the verbs and nouns the user is likely to say. Claude only
+  reads the body once it has decided to invoke based on this description.
+---
+
+# Skill body — workflow steps, tool call sequences, examples
+```
+
+Notes:
+
+- Skills are loaded at session start. Restart Claude Code (or reload the
+  skills panel) after creating one.
+- Supporting files (templates, scripts, fixtures) can live alongside
+  `SKILL.md` inside the skill directory and be referenced by relative
+  path from the body.
+- A flat `.claude/skills/<name>.md` will NOT load — the file must be
+  named `SKILL.md` inside a per-skill directory.
+
+> **Kiro equivalent:** Kiro uses a flatter convention. The whole
+> `.kiro/steering` directory in this repo is *not* a single symlink —
+> individual files are linked because Kiro reads any `.md` directly
+> under `steering/` (no per-skill subdirectory, filename is freeform):
+>
+> ```
+> golang/.kiro/steering/setup.md      -> ../../kiro-power/steering/setup.md
+> golang/.kiro/steering/validation.md -> ../../kiro-power/steering/validation.md
+> ```
+>
+> To add a new Kiro steering doc: create
+> `kiro-power/steering/<name>.md`, then
+> `ln -s ../../kiro-power/steering/<name>.md .kiro/steering/<name>.md`.
 
 ## What's in this directory
 
 ```
 claude-skill/
-├── README.md              # This file
-├── mcp.json               # MCP server config (edit paths before use)
-├── CLAUDE.md              # Optional project context file
+├── README.md                        # this file
+├── mcp.json                         # Claude Code MCP config — copy as .mcp.json
+├── CLAUDE.md                        # project context — copy as CLAUDE.md
 └── skills/
-    └── thor-validate.md   # Claude Code skill (validation workflow)
+    └── thor-validate/
+        └── SKILL.md                 # validation workflow skill
 ```
-
-## Kiro vs Claude Code — Key Differences
-
-| | Kiro Power | Claude Code |
-|---|---|---|
-| Install | Powers panel → one click | Manual file copy + path editing |
-| MCP config | `${powerDir}` variables (auto-resolved) | Absolute paths (you fill in) |
-| AWS credentials | Auto-discovered from `~/.aws/config` | Must set `AWS_PROFILE` explicitly (Claude injects its own) |
-| Workflow guides | `steering/` files (auto-triggered by keywords) | `.claude/skills/` (user-invoked) or `CLAUDE.md` |
-| Context loading | Dynamic (activates on mention, unloads when done) | Always loaded |
-| First-run setup | Kiro agent helps configure `HOME` etc. | Manual |
 
 ## Troubleshooting
 
 | Error | Fix |
 |-------|-----|
-| `AccessDeniedException` on Converse | Wrong `AWS_PROFILE` — set it to your Bedrock-enabled profile in `.mcp.json` |
-| `ExpiredTokenException` | Run `isengardcli assume` / `aws sso login` and retry (no restart needed) |
-| `spawn ... ENOENT` | Path to Python venv is wrong in `.mcp.json` — use absolute path |
-| Tools not found | Make sure `.mcp.json` is in the directory where you run `claude` |
+| `spawn thor-mcp ENOENT` | `thor-mcp` isn't on `PATH`. Run `make install-local` or replace the `command` in `mcp.json` with an absolute path. |
+| `ExpiredTokenException` / "credentials expired" | Run one of the four refresh commands above and retry. No restart needed. |
+| `AccessDeniedException` on Converse | Your AWS profile doesn't have Bedrock access in the configured region. Check `aws bedrock list-inference-profiles --region <region>`. |
+| Tools not appearing in Claude Code | Make sure `.mcp.json` is in the directory you launch `claude` from, then reload the MCP servers panel. |

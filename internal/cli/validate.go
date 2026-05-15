@@ -259,7 +259,7 @@ func runValidate(cmd *cobra.Command, folder string, opts validateOptions, deps v
 	}
 
 	startedAt := time.Now().UTC()
-	results, err := v.ValidateBatch(ctx, controlIDs, folder, validator.BatchOptions{
+	results, err := v.ValidateBatchWithFallback(ctx, controlIDs, folder, validator.BatchOptions{
 		Concurrency:   opts.concurrency,
 		ConsensusRuns: opts.consensus,
 		Progress: func(e validator.ProgressEvent) {

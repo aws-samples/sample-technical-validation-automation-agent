@@ -3,72 +3,108 @@
 ## When to Use
 
 Use this AUTOMATICALLY when:
-- The user just installed the Thor power and is using it for the first time
+- The user just installed the Thor Power and is using it for the first time
 - The Thor MCP server fails to connect
 - `thor_doctor` shows any failing checks
-- The user mentions setup, configuration, or credential issues
+- The user mentions setup, configuration, binary install, or credential issues
 
 ## First-Time Setup (do this proactively)
 
-When a user first activates the Thor power, do the following steps WITHOUT waiting to be asked:
+When a user first activates the Thor Power, do the following steps
+WITHOUT waiting to be asked:
 
 ### Step 1: Check if the MCP server is connected
 
-Try calling `thor_doctor`. If it works, skip to Step 4.
+Try calling `thor_doctor`. If it returns a structured report, skip to
+Step 4.
 
-If the server is NOT connected (you'll get an error), the user needs to configure the MCP env block. Continue to Step 2.
+If the server is NOT connected (you'll get an error), the user is
+most likely missing the `thor-mcp` binary on `PATH`. Continue to Step 2.
 
-### Step 2: Configure MCP env block
+### Step 2: Verify the binary is installed
 
-The user needs to edit `~/.kiro/settings/mcp.json`. Find the `power-thor-power-thor` entry and ensure the `env` block has:
+Ask the user to run in their terminal:
+
+```sh
+which thor-mcp
+thor-mcp --version
+```
+
+If `which thor-mcp` returns nothing, guide them through a local build:
+
+```sh
+cd <repo>/golang
+make build
+make install-local
+```
+
+Then have them confirm `~/.local/bin` is on their `PATH` (the install
+target prints the exact rc-file line if not).
+
+### Step 3: Configure MCP env block
+
+The user needs to verify `~/.kiro/settings/mcp.json`. Find the
+`power-thor-psa-validator-thor` entry (Kiro creates it on Power
+install) and confirm the `env` block. The default the Power ships with
+is:
 
 ```json
 "env": {
-  "HOME": "<user-home-directory>",
-  "AWS_DEFAULT_REGION": "us-east-1",
-  "PATH": "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+  "AWS_REGION": "us-east-1",
+  "PATH": "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:${env:HOME}/.local/bin:${env:HOME}/go/bin"
 }
 ```
 
-To help the user:
-1. Detect their home directory (check the workspace path or ask)
-2. Open `~/.kiro/settings/mcp.json` and update the env block for them
-3. Tell them to reconnect the Thor MCP server (Kiro panel → MCP Servers → reconnect)
+That `PATH` covers Homebrew (`/opt/homebrew/bin`), system bins,
+`make install-local` output (`~/.local/bin`), and `go install` output
+(`~/go/bin`). If `thor-mcp` is somewhere else, set the `command` field
+to its absolute path instead.
 
-**IMPORTANT:** Do NOT add `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, or `AWS_SESSION_TOKEN` to the env block. These expire and prevent auto-refresh. Thor discovers credentials automatically.
+**IMPORTANT:** Do NOT add `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`,
+or `AWS_SESSION_TOKEN` to the env block. These expire and prevent
+auto-refresh. The binary uses the AWS SDK default chain, which
+discovers credentials automatically.
 
-**NOTE:** On first server connect, the Python venv and dependencies are installed automatically (~30 seconds). The user may need to reconnect once more after this completes.
+After editing, tell them to reconnect the Thor MCP server (Kiro panel →
+MCP Servers → reconnect).
 
-### Step 3: AWS Credentials
+### Step 4: AWS Credentials
 
-Ask the user: "How do you get your AWS credentials?" Then guide them:
+Ask the user: *"How do you get your AWS credentials?"* Then tell them
+to run **whichever applies** — they only need one:
 
-- **Isengard**: "Run `isengardcli assume <your-account>` in your terminal. Thor will auto-discover the credential_process profile."
-- **SSO**: "Run `aws sso login --profile <your-profile>`. If it's not your default profile, I'll add `AWS_PROFILE` to the env block."
-- **Ada**: "Run `ada credentials update` in your terminal."
-- **Static keys**: "If you have long-lived keys in `~/.aws/credentials` under `[default]`, those will work automatically."
+```
+aws sso login --profile <profile>     # SSO users
+aws configure                         # static keys
+isengardcli assume <account>          # Amazon Cloud Desktop
+ada credentials update                # alternative for Cloud Desktop
+```
 
-The user does NOT need to tell you which profile — Thor scans `~/.aws/config` and finds `credential_process` profiles automatically.
+The user does NOT need to tell you which profile — the SDK scans
+`~/.aws/config` for `credential_process` and SSO profiles
+automatically. If they want a non-default profile, they can set
+`AWS_PROFILE` in the `env` block.
 
-### Step 4: Verify
+### Step 5: Verify
 
-Call `thor_doctor`. All 7 checks should pass:
-- ✅ Python version
-- ✅ AWS Credentials (shows which method was discovered)
-- ✅ AWS Region
-- ✅ Bedrock client
-- ✅ qpdf (optional, ⚠️ is fine)
-- ✅ Tools directory
-- ✅ Python dependencies
+Call `thor_doctor`. The structured report should show:
 
-If credentials show as missing, check that `HOME` is set correctly in the env block.
+- Embedded prompts: `system_old.txt`, `system_new.txt`,
+  `system_revised.txt`, and `CONTEXT.csv` all present.
+- AWS configuration: region, profile, credential source resolved.
+- STS caller identity: account + ARN.
+- Bedrock: at least one inference profile with id starting
+  `global.anthropic.claude-sonnet-4-5`.
+
+If credentials show as missing, double-check the env block (see Step 3)
+and that the user actually ran a credential command in Step 4.
 
 ## Common Issues and Fixes
 
 | Symptom | Cause | Fix |
 |---------|-------|-----|
-| Server won't connect | First run, venv being created | Wait 30 seconds, reconnect |
-| `spawn bash ENOENT` | Kiro can't find bash | Change command to `/bin/bash` in mcp.json |
-| `AWS Credentials: Missing` | `HOME` not in env block | Add `"HOME": "/Users/theirname"` to env |
-| `ExpiredTokenException` | Hardcoded keys in env or stale `~/.aws/credentials` | Remove hardcoded keys, run credential refresh command |
-| `qpdf not found` | Not installed | `brew install qpdf` (Mac) — optional, only for large PDFs |
+| `spawn thor-mcp ENOENT` | Binary not on `PATH` | Run `make install-local` or set `command` to an absolute path in `mcp.json` |
+| Connect succeeds but `thor_doctor` says embedded prompts missing | Binary built incorrectly (rare; only possible from a tampered source tree) | Rebuild: `make clean && make build && make install-local` |
+| `AWS Credentials: Missing` | Default chain found nothing | Run one of the four refresh commands above; do not add static keys to `env` |
+| `ExpiredTokenException` | Credentials timed out | Re-run the refresh command and retry — no server restart needed |
+| `AccessDeniedException` on Converse | Profile lacks Bedrock access in the active region | `aws bedrock list-inference-profiles --region <region>` to verify, or pick a different profile via `AWS_PROFILE` |
