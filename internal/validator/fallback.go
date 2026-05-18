@@ -44,10 +44,20 @@ func ShouldFallback(r Result) bool {
 		"wrong document",
 		"document mismatch",
 		"evidence mismatch",
+		"response/docs mismatch",
+		"docs mismatch",
+		"docs are about",
 		"documents provided do not",
 		"documents do not match",
+		"documents don't match",
 		"supporting documents are about",
 		"supporting docs are about",
+		"doesn't match what",
+		"don't match what",
+		"does not match what",
+		"response describes",
+		"but docs are about",
+		"but documents are about",
 	}
 	for _, ind := range indicators {
 		if strings.Contains(lower, ind) {
