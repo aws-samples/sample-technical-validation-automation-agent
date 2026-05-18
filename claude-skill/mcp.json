@@ -2,6 +2,7 @@
 	"mcpServers": {
 		"thor": {
 			"command": "thor-mcp",
+			"type": "stdio",
 			"args": [],
 			"env": {
 				"AWS_REGION": "us-east-1"
