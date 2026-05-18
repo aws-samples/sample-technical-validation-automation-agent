@@ -42,20 +42,24 @@ description: Validate AWS partner competency applications using Thor. Use when t
   docs in `supporting_docs/`.
 
 ### Step 2: Determine parameters
-- **Application type**: `SERVICE` or `SOFTWARE`. The Excel hints at
-  this in most cases — pick `SOFTWARE` if uncertain.
-- **Designation category**: Generative AI Applications, Foundation
-  Models and App Development, Infrastructure and Data, Agentic AI Tools,
-  Agentic AI Applications, Agentic AI Consulting Services, or Generative
-  AI Consulting Services.
+- **Application type**: Only relevant when converting from Excel. If
+  `partner_responses.csv` already exists, skip — the type is baked into
+  the control ID suffixes (`-SOFTWARE` or `-SERVICE`). Default is
+  `SOFTWARE` if unsure.
+- **Designation category**: Do NOT pass this unless the user explicitly
+  asks to filter controls. Omitting it validates ALL controls in the
+  partner's CSV (the common case).
 
 ### Step 3: Convert Excel to CSV
 - Call `thor_convert` with `partner_folder` and `app_type`.
 - Skip if `partner_responses.csv` already exists and the user confirms.
 
 ### Step 4: Run validation
-- Call `thor_validate` with `partner_folder`, `category`, `app_type`,
-  and `skip_conversion: true`.
+- Call `thor_validate` with `partner_folder` and `skip_conversion: true`.
+- Do NOT pass `category` unless the user explicitly asks to filter.
+  Omitting it validates ALL controls in the CSV.
+- Do NOT pass `app_type` unless converting fresh from Excel. Default is
+  SOFTWARE.
 - The first run on a partner folder also builds an `evidence_map.json`
   (one Bedrock call per supporting file with the full CONTEXT.csv
   catalog) so each control sees only relevant evidence. Subsequent runs

@@ -2,10 +2,11 @@
 	"mcpServers": {
 		"thor": {
 			"command": "thor-mcp",
+			"type": "stdio",
 			"args": [],
 			"env": {
-				"AWS_REGION": "us-west-2",
-				"AWS_PROFILE": "bedrock"
+				"AWS_REGION": "us-east-1",
+				"AWS_PROFILE": "default"
 			}
 		}
 	}
