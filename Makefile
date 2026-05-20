@@ -24,7 +24,7 @@ GOFLAGS  ?= -trimpath
 GO_BUILD := CGO_ENABLED=0 $(GO) build $(GOFLAGS) -ldflags '$(LDFLAGS)'
 
 .PHONY: all build install-local uninstall-local test test-cover lint vet fmt tidy \
-	sync-prompts verify-prompts release-snapshot clean help
+	sync-prompts verify-prompts release-snapshot cross-compile npm-prepare clean help
 
 all: build
 
@@ -88,6 +88,25 @@ release-snapshot: ## Local GoReleaser snapshot (no publish)
 
 clean: ## Remove build artifacts
 	rm -rf $(BIN_DIR) $(DIST_DIR) $(COVER_FILE)
+
+cross-compile: ## Cross-compile for all platforms into dist/
+	@mkdir -p $(DIST_DIR)
+	GOOS=darwin  GOARCH=arm64 $(GO_BUILD) -o $(DIST_DIR)/thor-mcp-darwin-arm64  ./cmd/thor-mcp
+	GOOS=darwin  GOARCH=amd64 $(GO_BUILD) -o $(DIST_DIR)/thor-mcp-darwin-x64    ./cmd/thor-mcp
+	GOOS=linux   GOARCH=amd64 $(GO_BUILD) -o $(DIST_DIR)/thor-mcp-linux-x64     ./cmd/thor-mcp
+	GOOS=linux   GOARCH=arm64 $(GO_BUILD) -o $(DIST_DIR)/thor-mcp-linux-arm64   ./cmd/thor-mcp
+	GOOS=windows GOARCH=amd64 $(GO_BUILD) -o $(DIST_DIR)/thor-mcp-win32-x64.exe ./cmd/thor-mcp
+	@echo "Cross-compiled to $(DIST_DIR)/"
+	@ls -lh $(DIST_DIR)/
+
+npm-prepare: cross-compile ## Build all platforms and stage into npm packages
+	@echo "Staging binaries into npm packages..."
+	@cp $(DIST_DIR)/thor-mcp-darwin-arm64  npm/darwin-arm64/bin/thor-mcp
+	@cp $(DIST_DIR)/thor-mcp-darwin-x64    npm/darwin-x64/bin/thor-mcp
+	@cp $(DIST_DIR)/thor-mcp-linux-x64     npm/linux-x64/bin/thor-mcp
+	@cp $(DIST_DIR)/thor-mcp-linux-arm64   npm/linux-arm64/bin/thor-mcp
+	@cp $(DIST_DIR)/thor-mcp-win32-x64.exe npm/win32-x64/bin/thor-mcp.exe
+	@echo "Done. Run 'cd npm/thor-mcp && npm publish' to publish."
 
 help: ## Show available targets
 	@grep -E '^[a-zA-Z0-9_-]+:.*?## ' $(MAKEFILE_LIST) | \

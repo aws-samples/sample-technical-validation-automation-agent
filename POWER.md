@@ -20,16 +20,14 @@ dependencies.
 
 ## Quick Start
 
-### 1. Install the binary
+### 1. Install the `thor` CLI binary
 
-The Kiro Power expects `thor-mcp` to be on `PATH` (or you can override
-the command in `mcp.json` with an absolute path).
+The MCP server calls the `thor` CLI for all operations. Install it:
 
 ```sh
-cd <repo>/golang
+cd <repo>
 make build
-make install-local        # installs thor + thor-mcp into ~/.local/bin
-                          # override with THOR_INSTALL_DIR=...
+make install-local        # installs thor to ~/.local/bin
 ```
 
 Verify:
@@ -41,42 +39,38 @@ thor doctor
 
 ### 2. Install the Power
 
-Install this Power from the Kiro Powers panel, or point Kiro at the
-`golang/kiro-power/` directory directly.
+Install this Power from the Kiro Powers panel.
 
-### 3. Configure MCP env (one-time)
+### 3. Configure MCP (one-time)
 
-Open `~/.kiro/settings/mcp.json`. Find the
-`power-thor-psa-validator-thor` entry that Kiro added when you
-installed the Power, and confirm the `env` block. The Power ships with
-a sensible default `PATH` that covers Homebrew, system bins, and
-`~/.local/bin` (where `make install-local` puts the binary):
+Open `~/.kiro/settings/mcp.json`. Find the Thor power entry and ensure
+it uses npx with the public registry:
 
 ```json
-"env": {
-  "AWS_REGION": "us-east-1",
-  "PATH": "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:${env:HOME}/.local/bin:${env:HOME}/go/bin"
+"power-thor-power-thor": {
+  "command": "npx",
+  "transport": "stdio",
+  "args": ["-y", "--registry", "https://registry.npmjs.org", "@asp-sail/thor-mcp"],
+  "timeout": 600000,
+  "env": {
+    "AWS_REGION": "us-east-1",
+    "PATH": "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:${env:HOME}/.local/bin"
+  }
 }
 ```
 
-If `thor-mcp` is somewhere else, set the `command` field to the
-absolute path instead. **Do not** add `AWS_ACCESS_KEY_ID` /
-`AWS_SECRET_ACCESS_KEY` / `AWS_SESSION_TOKEN` here — those expire and
-break credential auto-refresh. The binary uses the AWS SDK default
-chain, which picks up SSO / `credential_process` / shared profile
-automatically.
+**Do not** add `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` /
+`AWS_SESSION_TOKEN` here — those expire and break credential
+auto-refresh.
 
 ### 4. Get AWS credentials
 
-Pick **one** — whichever applies to you:
+Pick whichever applies:
 
 ```
 aws sso login --profile <profile>     # SSO users
 aws configure                         # static keys
 ```
-
-You don't need to set `AWS_PROFILE` in the env block unless you want a
-profile other than the default.
 
 ### 5. Reconnect & verify
 

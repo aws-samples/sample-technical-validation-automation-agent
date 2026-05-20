@@ -5,44 +5,57 @@ project context file, and a validation skill — copy what you need into
 the project where you'll run Claude Code, or open this directory
 directly when iterating on Thor itself.
 
-## Step 1 — Install the binary
+## Option A — npx (recommended, no build step)
 
-You need a `thor-mcp` executable on `PATH`. The bundled `mcp.json`
-invokes the binary by name; an absolute path works too.
+Requires: Node.js 18+ and the `thor` CLI binary on PATH.
 
+1. Install the `thor` binary:
 ```sh
 cd <repo>
 make build
-make install-local        # copies bin/thor and bin/thor-mcp to ~/.local/bin
-                          # override with THOR_INSTALL_DIR=...
+make install-local
 ```
 
-If `~/.local/bin` isn't on your `PATH`, the install target prints the
-exact line to add to your shell rc.
+2. Add this to your project's `.mcp.json`:
+```json
+{
+  "mcpServers": {
+    "thor": {
+      "command": "npx",
+      "type": "stdio",
+      "args": ["-y", "@asp-sail/thor-mcp"],
+      "env": { "AWS_REGION": "us-east-1" }
+    }
+  }
+}
+```
 
-Verify:
+3. Run `claude` and say "run thor_doctor" to verify.
 
+## Option B — Direct binary (no Node.js needed)
+
+1. Install the binary:
 ```sh
-thor --version
-thor-mcp --version
-thor doctor
+cd <repo>
+make build
+make install-local
 ```
 
-## Step 2 — Wire Claude Code to `thor-mcp`
-
-Copy the bundled MCP config into the project where you'll run Claude
-Code:
-
-```sh
-cp claude-skill/mcp.json /path/to/your/project/.mcp.json
+2. Add this to your project's `.mcp.json`:
+```json
+{
+  "mcpServers": {
+    "thor": {
+      "command": "thor-mcp",
+      "type": "stdio",
+      "args": [],
+      "env": { "AWS_REGION": "us-east-1" }
+    }
+  }
+}
 ```
 
-The bundled config invokes `thor-mcp` from `PATH` with `us-east-1`
-as the default region. It uses the AWS SDK default credential chain
-(no profile hardcoded), so it works out of the box if you have valid
-credentials via SSO, `credential_process`, or env vars.
-
-If you need a specific profile or region, edit the `env` block:
+3. Run `claude` and say "run thor_doctor" to verify.
 
 ```json
 {

@@ -1,9 +1,9 @@
 {
 	"mcpServers": {
 		"thor": {
-			"command": "thor-mcp",
+			"command": "npx",
 			"type": "stdio",
-			"args": [],
+			"args": ["-y", "--registry", "https://registry.npmjs.org", "@asp-sail/thor-mcp"],
 			"env": {
 				"AWS_REGION": "us-east-1"
 			}

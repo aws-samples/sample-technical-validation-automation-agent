@@ -1,0 +1,25 @@
+{
+  "name": "@asp-sail/thor-mcp",
+  "version": "0.2.0",
+  "description": "Thor PSA Validator — AI-powered partner competency validation via MCP",
+  "type": "module",
+  "bin": {
+    "thor-mcp-server": "src/index.js"
+  },
+  "scripts": {
+    "start": "node src/index.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "zod": "^3.25.0"
+  },
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/aws-samples/thor-power"
+  },
+  "keywords": ["mcp", "aws", "bedrock", "validation", "partner", "competency", "thor"],
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
