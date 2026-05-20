@@ -34,6 +34,7 @@ func (t AppType) Valid() bool {
 type Response struct {
 	ControlID       string
 	PartnerResponse string
+	EmbeddedLink    string // hyperlink URL from the cell, if any
 }
 
 // nanLiterals are the strings the Python pandas pipeline emits when a cell
@@ -176,9 +177,18 @@ func extract(xlsxPath string, appType AppType, controlList []string) ([]Response
 				if _, isNaN := nanLiterals[resp]; isNaN {
 					continue
 				}
+				// Extract hyperlink from cell if present
+				var link string
+				cellName, cerr := excelize.CoordinatesToCellName(c+1, r+1)
+				if cerr == nil {
+					if hasLink, target, lerr := f.GetCellHyperLink(sheet, cellName); lerr == nil && hasLink {
+						link = target
+					}
+				}
 				out = append(out, Response{
 					ControlID:       outID,
 					PartnerResponse: resp,
+					EmbeddedLink:    link,
 				})
 			}
 		}
@@ -221,13 +231,31 @@ func findHeader(rows [][]string) (int, int, bool) {
 //   - else: scan the row after the header (then the header itself) for any
 //     cell containing "Partner Response" and return that column.
 func responseColumns(sheet string, rows [][]string, headerRow int) []int {
-	switch {
-	case strings.Contains(sheet, "GenAI Cust Ex Reqs"),
-		strings.Contains(sheet, "Generative AI Customer Example"):
-		return []int{5, 7, 9, 11} // F, H, J, L
-	case strings.Contains(sheet, "Common Cust Example Reqs"),
-		strings.Contains(sheet, "Common Customer Example"):
-		return []int{4, 6, 8, 10} // E, G, I, K
+	// For customer example sheets, dynamically scan the sub-header row
+	// for "Partner Response" columns. This handles varying Excel template
+	// versions where columns may shift.
+	if isCustomerExampleSheet(sheet) {
+		subHeaderRow := headerRow + 1
+		if subHeaderRow < len(rows) {
+			var found []int
+			for c, cell := range rows[subHeaderRow] {
+				if strings.Contains(cell, "Partner Response") {
+					found = append(found, c)
+				}
+			}
+			if len(found) > 0 {
+				return found
+			}
+		}
+		// Fallback to hardcoded positions if sub-header scan fails
+		switch {
+		case strings.Contains(sheet, "GenAI Cust Ex Reqs"),
+			strings.Contains(sheet, "Generative AI Customer Example"):
+			return []int{5, 7, 9, 11} // F, H, J, L
+		case strings.Contains(sheet, "Common Cust Example Reqs"),
+			strings.Contains(sheet, "Common Customer Example"):
+			return []int{4, 6, 8, 10} // E, G, I, K
+		}
 	}
 
 	// Single-response path. Try the row below the header first, then the
@@ -285,11 +313,11 @@ func writeCSV(path string, rows []Response) error {
 	defer func() { _ = f.Close() }()
 
 	w := csv.NewWriter(f)
-	if err := w.Write([]string{controls.ColumnControlID, "partner_response"}); err != nil {
+	if err := w.Write([]string{controls.ColumnControlID, "partner_response", "embedded_link"}); err != nil {
 		return err
 	}
 	for _, r := range rows {
-		if err := w.Write([]string{r.ControlID, r.PartnerResponse}); err != nil {
+		if err := w.Write([]string{r.ControlID, r.PartnerResponse, r.EmbeddedLink}); err != nil {
 			return err
 		}
 	}
@@ -318,13 +346,15 @@ func LoadResponses(path string) ([]Response, error) {
 		return nil, fmt.Errorf("excel: read header from %s: %w", path, err)
 	}
 
-	idCol, respCol := -1, -1
+	idCol, respCol, linkCol := -1, -1, -1
 	for i, h := range header {
 		switch controls.CanonicalHeader(h) {
 		case controls.ColumnControlID:
 			idCol = i
 		case "partner_response":
 			respCol = i
+		case "embedded_link":
+			linkCol = i
 		}
 	}
 	if idCol == -1 {
@@ -347,9 +377,14 @@ func LoadResponses(path string) ([]Response, error) {
 		if idCol >= len(rec) || respCol >= len(rec) {
 			continue
 		}
+		link := ""
+		if linkCol >= 0 && linkCol < len(rec) {
+			link = strings.TrimSpace(rec[linkCol])
+		}
 		out = append(out, Response{
 			ControlID:       strings.TrimSpace(rec[idCol]),
 			PartnerResponse: rec[respCol],
+			EmbeddedLink:    link,
 		})
 	}
 	return out, nil

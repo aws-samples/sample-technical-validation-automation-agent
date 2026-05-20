@@ -16,3 +16,4 @@ coverage.out
 
 # Sample Docs
 sample/
+.DS_Store

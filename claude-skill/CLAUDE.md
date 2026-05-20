@@ -62,6 +62,4 @@ retry — no server restart needed. Pick whichever applies:
 ```
 aws sso login --profile <profile>     # SSO users
 aws configure                         # static keys
-isengardcli assume <account>          # Amazon Cloud Desktop
-ada credentials update                # alternative for Cloud Desktop
 ```

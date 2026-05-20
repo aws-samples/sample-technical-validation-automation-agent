@@ -73,8 +73,6 @@ Pick **one** — whichever applies to you:
 ```
 aws sso login --profile <profile>     # SSO users
 aws configure                         # static keys
-isengardcli assume <account>          # Amazon Cloud Desktop
-ada credentials update                # alternative for Cloud Desktop
 ```
 
 You don't need to set `AWS_PROFILE` in the env block unless you want a

@@ -8,6 +8,8 @@ Ships as a single static binary — no Python, no runtime dependencies.
 
 ## Quick Start
 
+**Prerequisites:** Go 1.23+ (`go version` to check)
+
 ```sh
 # Build
 make build
@@ -18,6 +20,34 @@ make install-local
 # Verify
 thor doctor
 ```
+
+## Supported Evidence File Types
+
+Thor processes the following file types from `supporting_docs/`:
+
+| Extension | How it's sent to Bedrock |
+|---|---|
+| `.pdf` | Native document block (split if >40 pages) |
+| `.xlsx`, `.xls` | Native document block |
+| `.docx`, `.doc` | Native document block |
+| `.csv`, `.html`, `.txt`, `.md` | Native document block |
+| `.pptx` | Text-extracted (always, regardless of size) |
+| `.png`, `.jpg`, `.jpeg` | Image block (resized if >8000px) |
+
+Files over 4.5MB fall back to text extraction automatically.
+
+## Default Model
+
+Thor uses `global.anthropic.claude-sonnet-4-5-20250929-v1:0` by default.
+
+To use a different model (e.g., for cost optimization), pass `--model-id`:
+
+```sh
+thor validate <folder> --model-id "us.anthropic.claude-sonnet-4-20250514-v1:0"
+```
+
+Or via the MCP tool's `model_id` parameter. Any Bedrock inference profile
+accessible in your region works.
 
 ## Using with Kiro
 

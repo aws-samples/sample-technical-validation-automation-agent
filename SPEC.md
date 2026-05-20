@@ -519,8 +519,6 @@ hint:
 AWS credentials expired. To refresh, run one of:
   aws sso login --profile <profile>     # for SSO users
   aws configure                         # for static keys
-  isengardcli assume <account>          # if you're on an Amazon Cloud Desktop
-  ada credentials update                # alternative for Amazon Cloud Desktop users
 ```
 
 ## 8. Versioning and release metadata

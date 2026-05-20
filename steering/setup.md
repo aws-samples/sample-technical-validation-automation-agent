@@ -76,8 +76,6 @@ to run **whichever applies** — they only need one:
 ```
 aws sso login --profile <profile>     # SSO users
 aws configure                         # static keys
-isengardcli assume <account>          # Amazon Cloud Desktop
-ada credentials update                # alternative for Cloud Desktop
 ```
 
 The user does NOT need to tell you which profile — the SDK scans

@@ -29,12 +29,19 @@ re-convert or skip conversion.
 
 ### Step 3: Determine Application Type (only if converting from Excel)
 
-Only relevant when running `thor_convert`. If `partner_responses.csv`
-already exists, skip this — the type is already baked into the control
-IDs (look for `-SOFTWARE` or `-SERVICE` suffixes in the CSV).
+CRITICAL: Before converting, the app type must be determined from the
+Excel's Introduction sheet. Open the Excel and check the first 10 rows
+of the Introduction (or first) sheet:
+- If it contains "service offering" → it's SERVICE
+- If it contains "partner offering" or "software" → it's SOFTWARE
+- If unclear → DEFAULT TO SOFTWARE
 
-If converting fresh: ask *"Is this a SERVICE or SOFTWARE application?"*
-Default is `SOFTWARE` if unsure.
+Thor's `thor_convert` tool auto-detects this from the Excel content.
+Only pass `app_type` explicitly if you need to override the detection.
+
+If `partner_responses.csv` already exists, skip this — the type is
+already baked into the control IDs (look for `-SOFTWARE` or `-SERVICE`
+suffixes in the CSV).
 
 ### Step 4: Determine Designation Category (optional)
 
@@ -52,8 +59,9 @@ Available categories (only if user explicitly requests filtering):
 
 ### Step 5: Convert Excel to CSV
 
-Call `thor_convert` with the partner folder and `app_type`. The output
-header is the canonical `controlId,partner_response`.
+Call `thor_convert` with the partner folder. Only pass `app_type` if
+you determined it's SERVICE in Step 3. Otherwise omit it (defaults to
+SOFTWARE).
 
 ### Step 6: Run Validation
 

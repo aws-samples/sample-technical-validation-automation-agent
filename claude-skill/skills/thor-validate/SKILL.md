@@ -27,8 +27,6 @@ description: Validate AWS partner competency applications using Thor. Use when t
    ```
    aws sso login --profile <profile>     # SSO users
    aws configure                         # static keys
-   isengardcli assume <account>          # Amazon Cloud Desktop
-   ada credentials update                # alternative for Cloud Desktop
    ```
 3. If the server isn't connected, verify the project's `.mcp.json`
    points at a `thor-mcp` binary that's on `PATH` (or use an absolute
@@ -42,10 +40,12 @@ description: Validate AWS partner competency applications using Thor. Use when t
   docs in `supporting_docs/`.
 
 ### Step 2: Determine parameters
-- **Application type**: Only relevant when converting from Excel. If
-  `partner_responses.csv` already exists, skip — the type is baked into
-  the control ID suffixes (`-SOFTWARE` or `-SERVICE`). Default is
-  `SOFTWARE` if unsure.
+- **Application type**: CRITICAL — Thor auto-detects this from the
+  Excel's Introduction sheet content ("service offering" → SERVICE,
+  "partner offering" or "software" → SOFTWARE). Do NOT pass `app_type`
+  unless overriding the auto-detection. Default is SOFTWARE if
+  detection fails. If `partner_responses.csv` already exists, skip —
+  the type is baked into the control ID suffixes.
 - **Designation category**: Do NOT pass this unless the user explicitly
   asks to filter controls. Omitting it validates ALL controls in the
   partner's CSV (the common case).

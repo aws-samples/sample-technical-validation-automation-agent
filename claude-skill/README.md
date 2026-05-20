@@ -102,8 +102,6 @@ applies** — pick one:
 ```
 aws sso login --profile <profile>     # SSO users
 aws configure                         # static keys
-isengardcli assume <account>          # Amazon Cloud Desktop
-ada credentials update                # alternative for Cloud Desktop
 ```
 
 No restart needed — the Bedrock client picks up refreshed credentials
