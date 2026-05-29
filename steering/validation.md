@@ -142,10 +142,12 @@ If the user wants to compare two runs, call `thor_diff`:
 - **Partial re-run**: validate a specific subset by passing
   space-separated control IDs via `controls` (e.g.,
   `"ACCT-001 COST-001"`).
-- **Consensus mode**: set `consensus: 3` for borderline cases. When
-  every control passes runs 1 and 2, run 3 is skipped.
-- **Large PDFs**: Thor splits PDFs over 40 pages automatically via
-  `pdfcpu` — no external tools required.
+- **Consensus mode**: When the user asks for consensus or majority
+  voting, pass `consensus_runs: 3` (NOT concurrency). This runs each
+  control 3 times and majority-votes the result. Example:
+  `thor_validate` with `consensus_runs: 3`. Do NOT confuse this with
+  `concurrency` which controls parallelism.
+- **Large PDFs**: Thor splits PDFs over 40 pages automatically.
 - **`.pptx` files**: Thor extracts text from every `.pptx` it sees,
   regardless of size, using the standard library's zip + xml
   parsers.

@@ -1,48 +1,31 @@
 #!/usr/bin/env node
 /**
- * Thor MCP Server — Node.js wrapper that dispatches tool calls to the
- * `thor` CLI binary. This gives us native npx compatibility while keeping
- * all validation logic in the Go binary.
- *
- * Prerequisites: `thor` binary on PATH (via `make install-local` or
- * downloaded from releases).
+ * Thor MCP Server — self-contained Node.js implementation.
+ * No external binaries required. All validation logic runs in-process.
  */
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { execFile } from "child_process";
-import { promisify } from "util";
 import { z } from "zod";
 
-const exec = promisify(execFile);
-
-const THOR_BIN = process.env.THOR_BIN || "thor";
-const TIMEOUT = 600_000; // 10 min for long validations
-
-async function runThor(args) {
-  try {
-    const { stdout, stderr } = await exec(THOR_BIN, args, {
-      timeout: TIMEOUT,
-      maxBuffer: 50 * 1024 * 1024, // 50MB
-      env: { ...process.env },
-    });
-    if (stderr) process.stderr.write(stderr);
-    return stdout.trim();
-  } catch (err) {
-    if (err.stdout) return err.stdout.trim();
-    throw new Error(`thor ${args[0]} failed: ${err.message}`);
-  }
-}
+import { doctor } from "./tools/doctor.js";
+import { convert } from "./tools/convert.js";
+import { validate } from "./tools/validate.js";
+import { listControls } from "./tools/list-controls.js";
+import { prep } from "./tools/prep.js";
+import { diff } from "./tools/diff.js";
+import { exportHtml } from "./tools/export.js";
+import { map } from "./tools/map.js";
 
 const server = new McpServer({
   name: "thor-psa-validator",
-  version: "0.2.0",
+  version: "1.0.0",
 });
 
 // thor_doctor
 server.tool("thor_doctor", {}, async () => {
-  const output = await runThor(["doctor", "--json"]);
-  return { content: [{ type: "text", text: output }] };
+  const result = await doctor();
+  return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
 });
 
 // thor_convert
@@ -50,32 +33,11 @@ server.tool(
   "thor_convert",
   {
     partner_folder: z.string().describe("Path to partner folder containing Excel checklist"),
-    app_type: z.string().optional().describe("APPLICATION type: SOFTWARE or SERVICE"),
+    app_type: z.string().optional().describe("APPLICATION type: SOFTWARE or SERVICE (default: SOFTWARE)"),
   },
   async ({ partner_folder, app_type }) => {
-    const args = ["convert", partner_folder];
-    if (app_type) args.push("--app-type", app_type);
-    const output = await runThor(args);
-    return { content: [{ type: "text", text: output }] };
-  }
-);
-
-// thor_map
-server.tool(
-  "thor_map",
-  {
-    partner_folder: z.string().describe("Path to partner folder"),
-    concurrency: z.number().optional().describe("Max parallel Bedrock calls"),
-    model_id: z.string().optional().describe("Bedrock model ID override"),
-    app_type: z.string().optional().describe("APPLICATION type: SOFTWARE or SERVICE"),
-  },
-  async ({ partner_folder, concurrency, model_id, app_type }) => {
-    const args = ["map", partner_folder];
-    if (concurrency) args.push("--concurrency", String(concurrency));
-    if (model_id) args.push("--model-id", model_id);
-    if (app_type) args.push("--app-type", app_type);
-    const output = await runThor(args);
-    return { content: [{ type: "text", text: output }] };
+    const result = await convert(partner_folder, app_type || "SOFTWARE");
+    return { content: [{ type: "text", text: result }] };
   }
 );
 
@@ -85,63 +47,20 @@ server.tool(
   {
     partner_folder: z.string().describe("Path to partner folder"),
     controls: z.string().optional().describe("Space-separated control IDs to validate"),
-    category: z.string().optional().describe("Designation category to filter controls"),
-    app_type: z.string().optional().describe("APPLICATION type: SOFTWARE or SERVICE"),
-    consensus: z.number().optional().describe("Number of consensus runs (default 1)"),
-    concurrency: z.number().optional().describe("Max parallel Bedrock calls"),
     skip_conversion: z.boolean().optional().describe("Skip Excel-to-CSV conversion"),
-    no_map: z.boolean().optional().describe("Skip evidence mapping pre-pass"),
-    system_mode: z.string().optional().describe("System prompt mode: old, new, or revised"),
-  },
-  async ({ partner_folder, controls, category, app_type, consensus, concurrency, skip_conversion, no_map, system_mode }) => {
-    const args = ["validate", partner_folder];
-    if (controls) args.push("--controls", controls);
-    if (category) args.push("--category", category);
-    if (app_type) args.push("--app-type", app_type);
-    if (consensus) args.push("--consensus", String(consensus));
-    if (concurrency) args.push("--concurrency", String(concurrency));
-    if (skip_conversion) args.push("--skip-conversion");
-    if (no_map) args.push("--no-map");
-    if (system_mode) args.push("--system-mode", system_mode);
-    const output = await runThor(args);
-    return { content: [{ type: "text", text: output }] };
-  }
-);
-
-// thor_diff
-server.tool(
-  "thor_diff",
-  {
-    partner_folder: z.string().describe("Path to partner folder"),
-    mode: z.string().optional().describe("Comparison mode: latest, all, or custom"),
-    run1: z.string().optional().describe("Timestamp of first run (for custom mode)"),
-    run2: z.string().optional().describe("Timestamp of second run (for custom mode)"),
-  },
-  async ({ partner_folder, mode, run1, run2 }) => {
-    const args = ["diff", partner_folder];
-    if (mode) args.push("--mode", mode);
-    if (run1) args.push("--run1", run1);
-    if (run2) args.push("--run2", run2);
-    const output = await runThor(args);
-    return { content: [{ type: "text", text: output }] };
-  }
-);
-
-// thor_prep
-server.tool(
-  "thor_prep",
-  {
-    partner_name: z.string().describe("Name of the partner"),
-    category: z.string().describe("Designation category"),
     app_type: z.string().optional().describe("APPLICATION type: SOFTWARE or SERVICE"),
-    folder: z.string().optional().describe("Custom folder path"),
+    runs: z.number().optional().describe("How many times to run each control (majority-vote). Default 1. Set to 3 for more reliable results."),
   },
-  async ({ partner_name, category, app_type, folder }) => {
-    const args = ["prep", partner_name, "--category", category];
-    if (app_type) args.push("--app-type", app_type);
-    if (folder) args.push("--folder", folder);
-    const output = await runThor(args);
-    return { content: [{ type: "text", text: output }] };
+  async ({ partner_folder, controls, skip_conversion, app_type, runs }) => {
+    // Note: agent sometimes passes "concurrency" when user means "runs" — handled gracefully
+    const result = await validate(partner_folder, {
+      controls: controls ? controls.split(/\s+/) : null,
+      skipConversion: skip_conversion || false,
+      appType: app_type || "SOFTWARE",
+      concurrency: 15,
+      consensus: runs || 1,
+    });
+    return { content: [{ type: "text", text: result }] };
   }
 );
 
@@ -152,28 +71,69 @@ server.tool(
     category: z.string().optional().describe("Filter by designation category"),
   },
   async ({ category }) => {
-    const args = ["list-controls"];
-    if (category) args.push("--category", category);
-    const output = await runThor(args);
-    return { content: [{ type: "text", text: output }] };
+    const result = listControls(category);
+    return { content: [{ type: "text", text: result }] };
   }
 );
 
-// thor_export
+// thor_prep
+server.tool(
+  "thor_prep",
+  {
+    partner_name: z.string().describe("Name of the partner"),
+    category: z.string().optional().describe("Designation category"),
+    folder: z.string().optional().describe("Custom base folder path"),
+  },
+  async ({ partner_name, category, folder }) => {
+    const result = await prep(partner_name, category, folder);
+    return { content: [{ type: "text", text: result }] };
+  }
+);
+
+// thor_diff — Compare validation runs
+server.tool(
+  "thor_diff",
+  {
+    partner_folder: z.string().describe("Path to partner folder"),
+    mode: z.enum(["latest", "all", "custom"]).optional().describe("Comparison mode: latest (2 most recent), all (timeline table), custom (pick two)"),
+    timestamp_a: z.string().optional().describe("First timestamp for custom mode (e.g. 20260507_115240)"),
+    timestamp_b: z.string().optional().describe("Second timestamp for custom mode"),
+  },
+  async ({ partner_folder, mode, timestamp_a, timestamp_b }) => {
+    const result = diff(partner_folder, mode || "latest", timestamp_a, timestamp_b);
+    return { content: [{ type: "text", text: result }] };
+  }
+);
+
+// thor_export — Render validation summary to HTML
 server.tool(
   "thor_export",
   {
-    partner_folder: z.string().describe("Path to partner folder"),
-    report: z.string().optional().describe("Specific report timestamp to export"),
+    partner_folder: z.string().describe("Path to partner folder containing validation_summary.md"),
+    output_path: z.string().optional().describe("Custom output path for the HTML file"),
   },
-  async ({ partner_folder, report }) => {
-    const args = ["export", partner_folder];
-    if (report) args.push("--report", report);
-    const output = await runThor(args);
-    return { content: [{ type: "text", text: output }] };
+  async ({ partner_folder, output_path }) => {
+    const result = exportHtml(partner_folder, output_path);
+    return { content: [{ type: "text", text: result }] };
   }
 );
 
-// Start
+// thor_map — Standalone evidence map builder
+server.tool(
+  "thor_map",
+  {
+    partner_folder: z.string().describe("Path to partner folder with supporting_docs/"),
+    force: z.boolean().optional().describe("Force rebuild even if map exists"),
+    concurrency: z.number().optional().describe("Max parallel Bedrock calls for mapping (default 6)"),
+  },
+  async ({ partner_folder, force, concurrency }) => {
+    const result = await map(partner_folder, {
+      force: force || false,
+      concurrency: concurrency || 6,
+    });
+    return { content: [{ type: "text", text: result }] };
+  }
+);
+
 const transport = new StdioServerTransport();
 await server.connect(transport);

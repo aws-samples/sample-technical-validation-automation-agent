@@ -106,7 +106,8 @@ npm-prepare: cross-compile ## Build all platforms and stage into npm packages
 	@cp $(DIST_DIR)/thor-mcp-linux-x64     npm/linux-x64/bin/thor-mcp
 	@cp $(DIST_DIR)/thor-mcp-linux-arm64   npm/linux-arm64/bin/thor-mcp
 	@cp $(DIST_DIR)/thor-mcp-win32-x64.exe npm/win32-x64/bin/thor-mcp.exe
-	@echo "Done. Run 'cd npm/thor-mcp && npm publish' to publish."
+	@chmod +x npm/darwin-arm64/bin/thor-mcp npm/darwin-x64/bin/thor-mcp npm/linux-x64/bin/thor-mcp npm/linux-arm64/bin/thor-mcp
+	@echo "Done. Publish with: make npm-publish"
 
 help: ## Show available targets
 	@grep -E '^[a-zA-Z0-9_-]+:.*?## ' $(MAKEFILE_LIST) | \

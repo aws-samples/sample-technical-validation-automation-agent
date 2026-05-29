@@ -1,0 +1,8 @@
+{
+  "name": "@asp-sail/thor-mcp-darwin-x64",
+  "version": "0.1.1",
+  "description": "Thor MCP binary for macOS x64 (Intel)",
+  "os": ["darwin"],
+  "cpu": ["x64"],
+  "license": "Apache-2.0"
+}

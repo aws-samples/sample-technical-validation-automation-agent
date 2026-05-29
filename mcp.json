@@ -6,8 +6,7 @@
 			"args": ["-y", "--registry", "https://registry.npmjs.org", "@asp-sail/thor-mcp"],
 			"timeout": 600000,
 			"env": {
-				"AWS_REGION": "us-east-1",
-				"PATH": "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:${env:HOME}/.local/bin"
+				"AWS_REGION": "us-east-1"
 			}
 		}
 	}
