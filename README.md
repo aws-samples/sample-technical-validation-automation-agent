@@ -91,3 +91,7 @@ make cross-compile  # all platforms
 
 Uses the AWS SDK default credential chain. If credentials expire
 mid-run, refresh and retry — no restart needed.
+
+## Authors
+
+For additional questions and support, please reach out to [Ragib Ahsan](https://www.linkedin.com/in/ragibmahsan/) and [Patrick Vassell](https://www.linkedin.com/in/patrickvassell/)
