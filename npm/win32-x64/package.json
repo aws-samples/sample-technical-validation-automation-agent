@@ -1,8 +1,0 @@
-{
-  "name": "@asp-sail/thor-mcp-win32-x64",
-  "version": "0.1.1",
-  "description": "Thor MCP binary for Windows x64",
-  "os": ["win32"],
-  "cpu": ["x64"],
-  "license": "Apache-2.0"
-}

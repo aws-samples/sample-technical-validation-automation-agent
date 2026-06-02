@@ -1,36 +1,8 @@
-# Build artifacts
-bin/
-dist/
-coverage.out
-.DS_Store
-
-# Internal dev configs
-.mcp.json
-.claude/
-.golangci.yml
-scripts/
-
-# npm
+# Dependencies
 npm-mcp/node_modules/
 
-# npm platform binaries (built, not committed)
-npm/darwin-arm64/bin/thor-mcp
-npm/darwin-x64/bin/thor-mcp
-npm/linux-x64/bin/thor-mcp
-npm/linux-arm64/bin/thor-mcp
-npm/win32-x64/bin/thor-mcp.exe
-
-# Local release env (PATs etc.)
-.release-env
-
-# Claude/Kiro specific
-.claude/settings.local.json
-
-# Root .gitignore ignores .mcp.json globally; un-ignore the symlink we
-# ship in this subdir so contributors get auto-MCP wiring when they
-# open golang/ in Claude Code.
-!.mcp.json
-
-# Sample Docs
-sample/
+# OS
 .DS_Store
+
+# Local config
+.mcp.json
