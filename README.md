@@ -95,3 +95,11 @@ mid-run, refresh and retry — no restart needed.
 ## Authors
 
 For additional questions and support, please reach out to [Ragib Ahsan](https://www.linkedin.com/in/ragibmahsan/) and [Patrick Vassell](https://www.linkedin.com/in/patrickvassell/)
+
+## Security
+
+See [CONTRIBUTING](CONTRIBUTING.md#security-issue-notifications) for more information.
+
+## License
+
+This library is licensed under the MIT-0 License. See the [LICENSE](LICENSE) file.
