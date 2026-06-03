@@ -1,6 +1,6 @@
 {
   "name": "@asp-sail/thor-mcp",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Thor PSA Validator — AI-powered partner competency validation via MCP. Zero dependencies beyond Node.js.",
   "type": "module",
   "bin": {
