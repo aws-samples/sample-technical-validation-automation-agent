@@ -1,7 +1,45 @@
 # Technical Validation Automation Agent
 
-This workspace uses the Thor MCP server (`thor-mcp`) to validate AWS
-partner competency applications for [Partner Program Validation](https://aws.amazon.com/partners/programs/specializations/).
+This workspace uses the Thor MCP server to validate AWS partner
+competency applications for [Partner Program Validation](https://aws.amazon.com/partners/programs/specializations/).
+
+## Setup
+
+If the MCP server isn't connected yet, create a `.mcp.json` file in
+your project root:
+
+```json
+{
+  "mcpServers": {
+    "Thor MCP Server": {
+      "command": "npx",
+      "type": "stdio",
+      "args": ["-y", "--registry", "https://registry.npmjs.org", "@asp-sail/thor-mcp@latest"],
+      "env": {
+        "AWS_REGION": "us-east-1"
+      }
+    }
+  }
+}
+```
+
+Then ensure your AWS credentials are available in your shell (Claude
+Code inherits your shell environment at server startup):
+
+```sh
+# Option 1: SSO login (sets up credential_process)
+aws sso login --profile <profile>
+export AWS_PROFILE=<profile>
+
+# Option 2: Export credentials directly (recommended)
+eval "$(aws configure export-credentials --format env)"
+
+# Option 3: Static keys
+aws configure
+```
+
+After setting credentials, start or reconnect the MCP server (`/mcp`)
+so it picks up the current environment.
 
 ## IMPORTANT: Always run `thor_doctor` first
 
@@ -57,16 +95,24 @@ PartnerName/
 
 ## Credential refresh
 
+**Claude Code / Cursor users:** The MCP server inherits your shell
+environment at startup. If credentials expire mid-session:
+
+1. Export fresh credentials into your current shell (don't use
+   `assume` — it spawns a subshell the MCP server can't see):
+   ```sh
+   eval "$(aws configure export-credentials --format env)"
+   ```
+   Or manually export `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`,
+   and `AWS_SESSION_TOKEN`.
+
+2. Reconnect the MCP server so it picks up the new env vars:
+   ```
+   /mcp
+   ```
+   Then select the Thor server and reconnect.
+
 **Kiro users:** Credentials are in the `env` block of
 `~/.kiro/settings/mcp.json`. When expired, update the `AWS_ACCESS_KEY_ID`,
 `AWS_SECRET_ACCESS_KEY`, and `AWS_SESSION_TOKEN` values and save.
 Kiro reconnects automatically.
-
-**Claude Code / Cursor users:** Refresh credentials in your shell:
-
-```
-aws sso login --profile <profile>     # SSO users
-aws configure                         # static keys
-```
-
-No server restart needed in either case.
