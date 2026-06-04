@@ -151,5 +151,7 @@ If the user wants to compare two runs, call `thor_diff`:
 - **`.pptx` files**: Thor extracts text from every `.pptx` it sees,
   regardless of size, using the standard library's zip + xml
   parsers.
-- **Credential expiry**: refresh and retry — no server restart
-  needed.
+- **Credential expiry**: Tell the user to get fresh credentials
+  (`aws configure export-credentials --format env`), update the three
+  `AWS_*` values in `~/.kiro/settings/mcp.json`, and save. Kiro
+  reconnects automatically — no restart needed.

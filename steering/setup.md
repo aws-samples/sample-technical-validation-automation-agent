@@ -3,14 +3,14 @@
 ## When to Use
 
 Use this AUTOMATICALLY when:
-- The user just installed the Thor Power and is using it for the first time
-- The Thor MCP server fails to connect
+- The user just installed the power and is using it for the first time
+- The MCP server fails to connect
 - `thor_doctor` shows any failing checks
-- The user mentions setup, configuration, binary install, or credential issues
+- The user mentions setup, configuration, or credential issues
 
 ## First-Time Setup (do this proactively)
 
-When a user first activates the Thor Power, do the following steps
+When a user first activates the power, do the following steps
 WITHOUT waiting to be asked:
 
 ### Step 1: Check if the MCP server is connected
@@ -18,91 +18,79 @@ WITHOUT waiting to be asked:
 Try calling `thor_doctor`. If it returns a structured report, skip to
 Step 4.
 
-If the server is NOT connected (you'll get an error), the user is
-most likely missing the `thor-mcp` binary on `PATH`. Continue to Step 2.
+If the server is NOT connected (you'll get an error), continue to
+Step 2.
 
-### Step 2: Verify the binary is installed
+### Step 2: Fix `npx` not found (ENOENT)
 
-Ask the user to run in their terminal:
+If you see `spawn npx ENOENT`, the MCP process can't find `npx`
+because Kiro doesn't inherit the user's shell PATH.
 
-```sh
-which thor-mcp
-thor-mcp --version
-```
-
-If `which thor-mcp` returns nothing, guide them through a local build:
-
-```sh
-cd <repo>/golang
-make build
-make install-local
-```
-
-Then have them confirm `~/.local/bin` is on their `PATH` (the install
-target prints the exact rc-file line if not).
-
-### Step 3: Configure MCP env block
-
-The user needs to verify `~/.kiro/settings/mcp.json`. Find the
-`power-thor-psa-validator-thor` entry (Kiro creates it on Power
-install) and confirm the `env` block. The default the Power ships with
-is:
+Ask the user to run `which npx` in their terminal, then update the
+`command` field in `~/.kiro/settings/mcp.json` to the absolute path:
 
 ```json
-"env": {
-  "AWS_REGION": "us-east-1",
-  "PATH": "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:${env:HOME}/.local/bin:${env:HOME}/go/bin"
-}
+"command": "/absolute/path/to/npx"
 ```
 
-That `PATH` covers Homebrew (`/opt/homebrew/bin`), system bins,
-`make install-local` output (`~/.local/bin`), and `go install` output
-(`~/go/bin`). If `thor-mcp` is somewhere else, set the `command` field
-to its absolute path instead.
+### Step 3: Configure credentials in the MCP env block
 
-**IMPORTANT:** Do NOT add `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`,
-or `AWS_SESSION_TOKEN` to the env block. These expire and prevent
-auto-refresh. The binary uses the AWS SDK default chain, which
-discovers credentials automatically.
+**IMPORTANT:** Kiro MCP processes do NOT inherit the user's shell
+environment. They cannot read `AWS_PROFILE`, shell functions, SSO
+sessions, or `credential_process` entries. The ONLY reliable method
+is to paste credentials directly into the `env` block.
 
-After editing, tell them to reconnect the Thor MCP server (Kiro panel →
-MCP Servers → reconnect).
+Tell the user to:
 
-### Step 4: AWS Credentials
+1. Get fresh credentials from their identity provider:
+   ```sh
+   aws configure export-credentials --format env
+   ```
 
-Ask the user: *"How do you get your AWS credentials?"* Then tell them
-to run **whichever applies** — they only need one:
+2. Open `~/.kiro/settings/mcp.json` and find the
+   `power-thor-power-thor` entry.
 
-```
-aws sso login --profile <profile>     # SSO users
-aws configure                         # static keys
-```
+3. Add the credentials to the `env` block:
+   ```json
+   "env": {
+     "AWS_REGION": "us-east-1",
+     "AWS_ACCESS_KEY_ID": "<paste here>",
+     "AWS_SECRET_ACCESS_KEY": "<paste here>",
+     "AWS_SESSION_TOKEN": "<paste here>",
+     "PATH": "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+   }
+   ```
 
-The user does NOT need to tell you which profile — the SDK scans
-`~/.aws/config` for `credential_process` and SSO profiles
-automatically. If they want a non-default profile, they can set
-`AWS_PROFILE` in the `env` block.
+4. Save the file. Kiro re-reads it on save and reconnects automatically.
 
-### Step 5: Verify
+### Step 4: Verify
 
 Call `thor_doctor`. The structured report should show:
 
-- Embedded prompts: `system_old.txt`, `system_new.txt`,
-  `system_revised.txt`, and `CONTEXT.csv` all present.
-- AWS configuration: region, profile, credential source resolved.
-- STS caller identity: account + ARN.
-- Bedrock: at least one inference profile with id starting
-  `global.anthropic.claude-sonnet-4-5`.
+- `embeddedPrompts.OK: true` — validation logic loaded
+- `aws.Identity` — account + ARN resolved
+- `aws.Bedrock.HasModelMatch: true` — Claude model available
+- `errors: []` — no errors
 
-If credentials show as missing, double-check the env block (see Step 3)
-and that the user actually ran a credential command in Step 4.
+If credentials show as expired or missing, have the user refresh them
+(get new values) and update the three `AWS_*` fields in the env block.
+
+### Step 5: Refresh expired credentials
+
+When `thor_doctor` returns "security token expired", tell the user:
+
+> Your AWS credentials have expired. Run
+> `aws configure export-credentials --format env` to get fresh ones,
+> then update the `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, and
+> `AWS_SESSION_TOKEN` values in your MCP config
+> (`~/.kiro/settings/mcp.json`) and save. It reconnects automatically.
 
 ## Common Issues and Fixes
 
 | Symptom | Cause | Fix |
 |---------|-------|-----|
-| `spawn thor-mcp ENOENT` | Binary not on `PATH` | Run `make install-local` or set `command` to an absolute path in `mcp.json` |
-| Connect succeeds but `thor_doctor` says embedded prompts missing | Binary built incorrectly (rare; only possible from a tampered source tree) | Rebuild: `make clean && make build && make install-local` |
-| `AWS Credentials: Missing` | Default chain found nothing | Run one of the four refresh commands above; do not add static keys to `env` |
-| `ExpiredTokenException` | Credentials timed out | Re-run the refresh command and retry — no server restart needed |
-| `AccessDeniedException` on Converse | Profile lacks Bedrock access in the active region | `aws bedrock list-inference-profiles --region <region>` to verify, or pick a different profile via `AWS_PROFILE` |
+| `spawn npx ENOENT` | Kiro can't find `npx` | Replace `"command": "npx"` with the absolute path (user runs `which npx`) |
+| `Could not load credentials from any providers` | No credentials in env block | Paste `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_SESSION_TOKEN` into the MCP config env block |
+| `ExpiredTokenException` / "credentials expired" | Tokens timed out | Get fresh credentials, update the three `AWS_*` values, save |
+| `AccessDeniedException` on Converse | Credentials lack Bedrock access in the region | Verify with `aws bedrock list-inference-profiles --region us-east-1` |
+| `thor_doctor` shows prompts missing | Package issue | Try `npx -y @asp-sail/thor-mcp@latest` to pull the latest version |

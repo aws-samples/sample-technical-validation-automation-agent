@@ -1,8 +1,10 @@
-# Thor PSA Validator
+# Technical Validation Automation Agent
 
-AI-powered partner competency validation tool. Validates AWS partner
-submissions against the PSA control catalog using Amazon Bedrock (Claude)
-and produces structured PASS / FAIL / WAIVED reports.
+Preview [Partner Program Validation](https://aws.amazon.com/partners/programs/specializations/) (for AI competency) using the technical validation power to accelerate program approval.
+
+This tool validates AWS partner submissions against the program control catalog
+using Amazon Bedrock (Claude) and produces structured PASS / FAIL / WAIVED
+reports with detailed reasoning.
 
 ## Quick Start
 
@@ -20,6 +22,30 @@ thor doctor           # verify
 ### 2. Connect to your AI assistant
 
 **Kiro:** Install as a Power from the Powers panel. See [`POWER.md`](POWER.md).
+After installing, open `~/.kiro/settings/mcp.json` and add your AWS
+credentials to the power's `env` block:
+
+```json
+"power-thor-power-thor": {
+  "command": "npx",
+  "transport": "stdio",
+  "args": ["-y", "--registry", "https://registry.npmjs.org", "@asp-sail/thor-mcp"],
+  "timeout": 600000,
+  "env": {
+    "AWS_REGION": "us-east-1",
+    "AWS_ACCESS_KEY_ID": "<your-access-key>",
+    "AWS_SECRET_ACCESS_KEY": "<your-secret-key>",
+    "AWS_SESSION_TOKEN": "<your-session-token>",
+    "PATH": "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:${env:HOME}/.local/bin"
+  }
+}
+```
+
+> **Note:** Kiro MCP processes don't inherit your shell environment.
+> Credentials must be pasted directly into the `env` block. When they
+> expire, update the values and save — Kiro reconnects automatically.
+> If `npx` is not found, replace `"command": "npx"` with the absolute
+> path (run `which npx`).
 
 **Claude Code / Cursor / any MCP client:** Add to `.mcp.json`:
 ```json
@@ -35,11 +61,16 @@ thor doctor           # verify
 }
 ```
 
+These clients inherit your shell environment, so `aws sso login` or
+`aws configure` is sufficient.
+
 ### 3. Get AWS credentials
 
-```
-aws sso login --profile <profile>     # SSO users
-aws configure                         # static keys
+```sh
+# Get credentials from your identity provider, then either:
+# - Paste into mcp.json env block (Kiro)
+# - Or export to your shell (Claude Code / Cursor)
+aws configure export-credentials --format env
 ```
 
 ### 4. Validate
@@ -89,9 +120,23 @@ make cross-compile  # all platforms
 
 ## Credential Handling
 
-Uses the AWS SDK default credential chain. If credentials expire
-mid-run, refresh and retry — no restart needed.
+**Kiro:** Paste `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, and
+`AWS_SESSION_TOKEN` into the MCP config `env` block. When they expire,
+update the values and save — Kiro reconnects automatically.
+
+**Claude Code / Cursor / other MCP clients:** These inherit your shell
+environment, so the standard AWS SDK credential chain works (env vars,
+`AWS_PROFILE`, SSO, `~/.aws/credentials`, instance metadata). If
+credentials expire mid-run, refresh and retry — no restart needed.
 
 ## Authors
 
 For additional questions and support, please reach out to [Ragib Ahsan](https://www.linkedin.com/in/ragibmahsan/) and [Patrick Vassell](https://www.linkedin.com/in/patrickvassell/)
+
+## Security
+
+See [CONTRIBUTING](CONTRIBUTING.md#security-issue-notifications) for more information.
+
+## License
+
+This library is licensed under the MIT-0 License. See the [LICENSE](LICENSE) file.

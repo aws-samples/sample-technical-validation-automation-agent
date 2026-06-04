@@ -1,7 +1,7 @@
-# Thor PSA Validator
+# Technical Validation Automation Agent
 
 This workspace uses the Thor MCP server (`thor-mcp`) to validate AWS
-partner competency applications.
+partner competency applications for [Partner Program Validation](https://aws.amazon.com/partners/programs/specializations/).
 
 ## IMPORTANT: Always run `thor_doctor` first
 
@@ -10,9 +10,9 @@ and Bedrock access are working. If it fails, guide the user through
 credential setup before proceeding. Do NOT attempt validation without
 a passing doctor check.
 
-## What Thor does
+## What this tool does
 - Validates partner submissions (Excel checklists + supporting docs)
-  against the PSA control catalog using Amazon Bedrock (Claude)
+  against the program control catalog using Amazon Bedrock (Claude)
 - Produces PASS / FAIL / WAIVED verdicts with reasoning for every control
 - Supports parallel validation, consensus mode, run-to-run diff, and
   self-contained HTML export
@@ -56,10 +56,17 @@ PartnerName/
   runs 1 and 2, run 3 is skipped.
 
 ## Credential refresh
-If you see expired-credential errors, tell the user to refresh and
-retry — no server restart needed. Pick whichever applies:
+
+**Kiro users:** Credentials are in the `env` block of
+`~/.kiro/settings/mcp.json`. When expired, update the `AWS_ACCESS_KEY_ID`,
+`AWS_SECRET_ACCESS_KEY`, and `AWS_SESSION_TOKEN` values and save.
+Kiro reconnects automatically.
+
+**Claude Code / Cursor users:** Refresh credentials in your shell:
 
 ```
 aws sso login --profile <profile>     # SSO users
 aws configure                         # static keys
 ```
+
+No server restart needed in either case.
