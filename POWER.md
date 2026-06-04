@@ -1,18 +1,18 @@
 ---
-name: "thor-psa-validator"
-displayName: "Thor PSA Validator"
-description: "Validates AWS partner submissions against the PSA control catalog using Bedrock Claude and produces structured PASS / FAIL / WAIVED reports."
-keywords: ["psa", "validation", "aws partner", "bedrock", "competency", "controls", "thor"]
+name: "technical-validation-automation"
+displayName: "Technical Validation Automation Agent"
+description: "Preview Partner Program Validation (for AI competency) using the technical validation power to accelerate program approval."
+keywords: ["psa", "validation", "aws partner", "bedrock", "competency", "controls", "thor", "specialization", "program"]
 author: "PSA Team"
 ---
 
-# Thor PSA Validator
+# Technical Validation Automation Agent
 
 ## Overview
 
-Thor validates AWS partner competency applications using Amazon Bedrock
+This tool validates AWS partner competency applications using Amazon Bedrock
 (Claude). It evaluates partner-submitted evidence (Excel checklists,
-PDFs, architecture documents) against the PSA control catalog and
+PDFs, architecture documents) against the program control catalog and
 produces a PASS / FAIL / WAIVED report with detailed reasoning.
 
 Single static binary, instant startup, no external runtime
@@ -43,8 +43,8 @@ Install this Power from the Kiro Powers panel.
 
 ### 3. Configure MCP (one-time)
 
-Open `~/.kiro/settings/mcp.json`. Find the Thor power entry and ensure
-it uses npx with the public registry:
+Open `~/.kiro/settings/mcp.json`. Find the Thor power entry and update
+it with your AWS credentials and the full path to `npx`:
 
 ```json
 "power-thor-power-thor": {
@@ -54,29 +54,41 @@ it uses npx with the public registry:
   "timeout": 600000,
   "env": {
     "AWS_REGION": "us-east-1",
+    "AWS_ACCESS_KEY_ID": "<your-access-key>",
+    "AWS_SECRET_ACCESS_KEY": "<your-secret-key>",
+    "AWS_SESSION_TOKEN": "<your-session-token>",
     "PATH": "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:${env:HOME}/.local/bin"
   }
 }
 ```
 
-**Do not** add `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` /
-`AWS_SESSION_TOKEN` here — those expire and break credential
-auto-refresh.
+> **Why credentials go here:** Kiro MCP processes do not inherit your
+> shell environment. They cannot read `AWS_PROFILE`, shell functions
+> like `isengardcli`, or SSO sessions. The only reliable method is to
+> paste credentials directly into the `env` block.
+
+> **If `npx` is not found (ENOENT):** Replace `"command": "npx"` with
+> the absolute path to your `npx` binary (run `which npx` to find it).
 
 ### 4. Get AWS credentials
 
-Pick whichever applies:
+Obtain temporary credentials from your identity provider and paste them
+into the `env` block above:
 
+```sh
+# Example: export credentials then copy them into mcp.json
+aws configure export-credentials --format env
 ```
-aws sso login --profile <profile>     # SSO users
-aws configure                         # static keys
-```
 
-### 5. Reconnect & verify
+Or use your organization's credential tool (SSO, Isengard, etc.) and
+copy the `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, and
+`AWS_SESSION_TOKEN` values.
 
-Reconnect the Thor MCP server in Kiro, then ask Kiro: *"run
-thor_doctor"*. You should see embedded prompts, credentials, and
-Bedrock model access all green.
+### 5. Refresh expired credentials
+
+When credentials expire, update the three `AWS_*` values in the `env`
+block and save the file. Kiro re-reads `mcp.json` on save and
+reconnects automatically — no restart needed.
 
 ## What Thor can do
 
@@ -148,7 +160,13 @@ stderr, which Kiro surfaces in the MCP server panel.
 
 ## Credential handling
 
-The binary uses the AWS SDK default credential chain:
+**Kiro users:** Paste `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, and
+`AWS_SESSION_TOKEN` directly into the `env` block of your MCP config
+(see Quick Start step 3). When tokens expire, update the values and
+save — Kiro reconnects automatically.
+
+**Claude Code / Cursor / other MCP clients:** These typically inherit
+your shell environment, so the standard AWS SDK credential chain works:
 
 1. Environment variables (`AWS_ACCESS_KEY_ID`, etc.)
 2. `AWS_PROFILE` shared-config profile (including SSO +
@@ -156,16 +174,17 @@ The binary uses the AWS SDK default credential chain:
 3. `~/.aws/credentials` and `~/.aws/config`
 4. EC2/ECS instance metadata
 
-If credentials expire mid-run, refresh with whichever command you used
-in step 4 above and retry. No server restart needed.
+If credentials expire mid-run, refresh and retry — no server restart
+needed.
 
 ## Troubleshooting
 
 | Error | Fix |
 |-------|-----|
-| `spawn thor-mcp ENOENT` | Binary not on `PATH`. Run `make install-local`, or set the `command` field in `mcp.json` to an absolute path. |
-| `ExpiredTokenException` / "credentials expired" | Refresh with one of the four commands above and retry. |
-| `AccessDeniedException` on Converse | Your AWS profile doesn't have Bedrock access in the configured region. Check `aws bedrock list-inference-profiles --region <region>`. |
+| `spawn npx ENOENT` | Kiro can't find `npx`. Replace `"command": "npx"` with the absolute path (run `which npx` in your terminal). |
+| `Could not load credentials from any providers` | Credentials missing from `env` block. Paste `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, and `AWS_SESSION_TOKEN` into the MCP config. |
+| `ExpiredTokenException` / "credentials expired" | Tokens have expired. Get fresh credentials, update the three `AWS_*` values in `mcp.json`, and save. |
+| `AccessDeniedException` on Converse | Your AWS credentials don't have Bedrock access in the configured region. Check `aws bedrock list-inference-profiles --region <region>`. |
 | `thor_diff` says no reports | You need at least two completed validation runs in `reports/summary/`. |
 
 ## Windows
