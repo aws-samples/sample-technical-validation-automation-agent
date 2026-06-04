@@ -2,10 +2,6 @@
 
 Preview [Partner Program Validation](https://aws.amazon.com/partners/programs/specializations/) (for AI competency) using the technical validation power to accelerate program approval.
 
-This tool validates AWS partner submissions against the program control catalog
-using Amazon Bedrock (Claude) and produces structured PASS / FAIL / WAIVED
-reports with detailed reasoning.
-
 ## Quick Start
 
 **Prerequisites:** Node.js 20+ (for `npx`) and an AWS account with
