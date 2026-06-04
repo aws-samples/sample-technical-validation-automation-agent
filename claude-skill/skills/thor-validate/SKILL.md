@@ -1,9 +1,9 @@
 ---
 name: thor-validate
-description: Validate AWS partner competency applications using Thor. Use when the user wants to validate a partner submission, run thor, check Thor health, convert checklists, build an evidence map, compare results, or export reports.
+description: Validate AWS partner competency applications. Use when the user wants to validate a partner submission, check health, convert checklists, build an evidence map, compare results, or export reports.
 ---
 
-# Thor PSA Validator
+# Technical Validation Automation Agent
 
 ## Available MCP Tools
 
@@ -22,15 +22,25 @@ description: Validate AWS partner competency applications using Thor. Use when t
 
 1. Call `thor_doctor`. It returns a structured report covering embedded
    prompts, AWS credentials, and Bedrock access.
-2. If credentials are missing or expired, ask the user to refresh and
-   retry. Tell them to run **whichever applies** — they only need one:
+2. If credentials are missing or expired, ask the user to refresh:
+   ```sh
+   eval "$(aws configure export-credentials --format env)"
    ```
-   aws sso login --profile <profile>     # SSO users
-   aws configure                         # static keys
-   ```
+   Then reconnect the MCP server (`/mcp`).
 3. If the server isn't connected, verify the project's `.mcp.json`
-   points at a `thor-mcp` binary that's on `PATH` (or use an absolute
-   path). Re-run `thor_doctor`.
+   has the correct config:
+   ```json
+   {
+     "mcpServers": {
+       "Thor MCP Server": {
+         "command": "npx",
+         "type": "stdio",
+         "args": ["-y", "--registry", "https://registry.npmjs.org", "@asp-sail/thor-mcp@latest"],
+         "env": { "AWS_REGION": "us-east-1" }
+       }
+     }
+   }
+   ```
 
 ## Validation Workflow
 
@@ -65,7 +75,7 @@ description: Validate AWS partner competency applications using Thor. Use when t
   catalog) so each control sees only relevant evidence. Subsequent runs
   reuse the map until files under `supporting_docs/` change. Tell the
   user this is normal and only happens once per folder.
-- Runs all applicable controls in parallel. The binary writes a
+- Runs all applicable controls in parallel. The MCP server writes a
   per-control structured log line to stderr (and to
   `<partner_folder>/validation_progress.log`) — the user can `tail -f`
   the file to watch progress.
@@ -90,7 +100,9 @@ description: Validate AWS partner competency applications using Thor. Use when t
 - **Consensus mode**: set `consensus: 3` for borderline cases (runs
   3x, majority vote; if every control passes runs 1 and 2, run 3 is
   skipped).
-- **Credential expiry**: just refresh and retry — no restart needed.
+- **Credential expiry**: Export fresh credentials
+  (`eval "$(aws configure export-credentials --format env)"`) and
+  reconnect the MCP server (`/mcp`). No restart needed.
 - **Compare runs**: `thor_diff` with `mode: latest` (default),
   `mode: all` (timeline table), or `mode: custom` with `run1` /
   `run2` timestamps.

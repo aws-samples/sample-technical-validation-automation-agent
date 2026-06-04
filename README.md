@@ -8,18 +8,10 @@ reports with detailed reasoning.
 
 ## Quick Start
 
-**Prerequisites:** Node.js 18+ and the `thor` CLI binary on PATH.
+**Prerequisites:** Node.js 20+ (for `npx`) and an AWS account with
+Amazon Bedrock access.
 
-### 1. Install the `thor` CLI
-
-```sh
-# Requires Go 1.23+ for building from source
-make build
-make install-local    # installs to ~/.local/bin
-thor doctor           # verify
-```
-
-### 2. Connect to your AI assistant
+### 1. Connect to your AI assistant
 
 **Kiro:** Install as a Power from the Powers panel. See [`POWER.md`](POWER.md).
 After installing, open `~/.kiro/settings/mcp.json` and add your AWS
@@ -64,7 +56,7 @@ credentials to the power's `env` block:
 These clients inherit your shell environment, so `aws sso login` or
 `aws configure` is sufficient.
 
-### 3. Get AWS credentials
+### 2. Get AWS credentials
 
 ```sh
 # Get credentials from your identity provider, then either:
@@ -73,7 +65,7 @@ These clients inherit your shell environment, so `aws sso login` or
 aws configure export-credentials --format env
 ```
 
-### 4. Validate
+### 3. Validate
 
 Ask your AI assistant: "validate the partner at /path/to/folder"
 
@@ -105,18 +97,7 @@ Files over 4.5MB fall back to text extraction automatically.
 
 ## Default Model
 
-Uses `global.anthropic.claude-sonnet-4-5-20250929-v1:0`. Override with `--model-id` flag or the MCP tool's `model_id` parameter.
-
-## Development (contributors only)
-
-Requires Go 1.23+.
-
-```sh
-make build        # build binaries
-make test         # unit tests
-make lint         # golangci-lint
-make cross-compile  # all platforms
-```
+Uses `global.anthropic.claude-sonnet-4-5-20250929-v1:0`. Override with the MCP tool's `model_id` parameter.
 
 ## Credential Handling
 

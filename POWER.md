@@ -15,33 +15,15 @@ This tool validates AWS partner competency applications using Amazon Bedrock
 PDFs, architecture documents) against the program control catalog and
 produces a PASS / FAIL / WAIVED report with detailed reasoning.
 
-Single static binary, instant startup, no external runtime
-dependencies.
+Runs as an MCP server via `npx` — no separate binary install needed.
 
 ## Quick Start
 
-### 1. Install the `thor` CLI binary
-
-The MCP server calls the `thor` CLI for all operations. Install it:
-
-```sh
-cd <repo>
-make build
-make install-local        # installs thor to ~/.local/bin
-```
-
-Verify:
-
-```sh
-thor --version
-thor doctor
-```
-
-### 2. Install the Power
+### 1. Install the Power
 
 Install this Power from the Kiro Powers panel.
 
-### 3. Configure MCP (one-time)
+### 2. Configure MCP (one-time)
 
 Open `~/.kiro/settings/mcp.json`. Find the Thor power entry and update
 it with your AWS credentials and the full path to `npx`:
@@ -70,7 +52,7 @@ it with your AWS credentials and the full path to `npx`:
 > **If `npx` is not found (ENOENT):** Replace `"command": "npx"` with
 > the absolute path to your `npx` binary (run `which npx` to find it).
 
-### 4. Get AWS credentials
+### 3. Get AWS credentials
 
 Obtain temporary credentials from your identity provider and paste them
 into the `env` block above:
@@ -84,13 +66,13 @@ Or use your organization's credential tool (SSO, Isengard, etc.) and
 copy the `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, and
 `AWS_SESSION_TOKEN` values.
 
-### 5. Refresh expired credentials
+### 4. Refresh expired credentials
 
 When credentials expire, update the three `AWS_*` values in the `env`
 block and save the file. Kiro re-reads `mcp.json` on save and
 reconnects automatically — no restart needed.
 
-## What Thor can do
+## What this tool can do
 
 - **Convert** Excel checklists to structured CSV for validation
 - **Map** supporting docs to the controls they're evidence for (one
@@ -155,7 +137,7 @@ During validation, tail the progress log:
 tail -f "<partner_folder>/validation_progress.log"
 ```
 
-The binary also writes a structured (JSON) log line per control to
+The MCP server also writes structured (JSON) log lines per control to
 stderr, which Kiro surfaces in the MCP server panel.
 
 ## Credential handling
@@ -189,7 +171,7 @@ needed.
 
 ## Windows
 
-The binary works natively on Windows — no shell bootstrap needed.
-The `mcp.json` shipped here uses POSIX-flavored paths in `PATH`; on
-Windows replace the `PATH` entry with your usual Windows paths (or
-delete it entirely and rely on the system `PATH`).
+Works on Windows via `npx`. The `mcp.json` shipped here uses
+POSIX-flavored paths in `PATH`; on Windows replace with your usual
+Windows paths (or delete the `PATH` entry entirely and rely on the
+system PATH).

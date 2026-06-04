@@ -1,211 +1,103 @@
-# Thor PSA Validator — Claude Code integration
+# Technical Validation Automation Agent — Claude Code Integration
 
-Self-contained Claude Code integration for Thor: an MCP config, a
-project context file, and a validation skill — copy what you need into
-the project where you'll run Claude Code, or open this directory
-directly when iterating on Thor itself.
+Claude Code integration for the technical validation agent: an MCP
+config, a project context file, and a validation skill.
 
-## Option A — npx (recommended, no build step)
+## Setup
 
-Requires: Node.js 18+ and the `thor` CLI binary on PATH.
+**Prerequisites:** Node.js 20+ (for `npx`) and AWS credentials with
+Bedrock access.
 
-1. Install the `thor` binary:
-```sh
-cd <repo>
-make build
-make install-local
-```
+### Step 1 — Add MCP config
 
-2. Add this to your project's `.mcp.json`:
+Create `.mcp.json` in your project root:
+
 ```json
 {
   "mcpServers": {
-    "thor": {
+    "Thor MCP Server": {
       "command": "npx",
       "type": "stdio",
-      "args": ["-y", "@asp-sail/thor-mcp"],
-      "env": { "AWS_REGION": "us-east-1" }
-    }
-  }
-}
-```
-
-3. Run `claude` and say "run thor_doctor" to verify.
-
-## Option B — Direct binary (no Node.js needed)
-
-1. Install the binary:
-```sh
-cd <repo>
-make build
-make install-local
-```
-
-2. Add this to your project's `.mcp.json`:
-```json
-{
-  "mcpServers": {
-    "thor": {
-      "command": "thor-mcp",
-      "type": "stdio",
-      "args": [],
-      "env": { "AWS_REGION": "us-east-1" }
-    }
-  }
-}
-```
-
-3. Run `claude` and say "run thor_doctor" to verify.
-
-```json
-{
-  "mcpServers": {
-    "thor": {
-      "command": "thor-mcp",
-      "args": [],
+      "args": ["-y", "--registry", "https://registry.npmjs.org", "@asp-sail/thor-mcp@latest"],
       "env": {
-        "AWS_REGION": "us-east-1",
-        "AWS_PROFILE": "your-profile-name"
+        "AWS_REGION": "us-east-1"
       }
     }
   }
 }
 ```
 
-## Step 3 — Add project context (optional)
+### Step 2 — Set AWS credentials
 
-Copy `CLAUDE.md` so Claude always has Thor context loaded for that
-project:
+The MCP server inherits your shell environment at startup. Export
+credentials before launching Claude Code:
+
+```sh
+# Option 1: Export directly (recommended)
+eval "$(aws configure export-credentials --format env)"
+
+# Option 2: SSO login
+aws sso login --profile <profile>
+export AWS_PROFILE=<profile>
+
+# Option 3: Static keys
+aws configure
+```
+
+### Step 3 — Verify
+
+Run `claude` and say "run thor_doctor". You should see all checks
+pass: embedded prompts, AWS credentials, and Bedrock model access.
+
+### Step 4 — Add project context (optional)
+
+Copy `CLAUDE.md` to give Claude always-on context about the tools:
 
 ```sh
 cp claude-skill/CLAUDE.md /path/to/your/project/CLAUDE.md
 ```
 
-## Step 4 — Install the validation skill (optional)
+### Step 5 — Install the validation skill (optional)
 
 ```sh
 mkdir -p /path/to/your/project/.claude/skills
 cp -R claude-skill/skills/thor-validate /path/to/your/project/.claude/skills/
 ```
 
-Claude Code discovers skills as `.claude/skills/<name>/SKILL.md` — the
-file MUST be named `SKILL.md` and live inside a directory named for the
-skill. When the user mentions validating a partner submission, Claude
-Code will auto-invoke this skill.
+Claude Code discovers skills as `.claude/skills/<name>/SKILL.md`.
 
-If you'd rather keep all Thor assets in one place and let Claude Code
-read through a symlink, replace the copy above with:
+## Credential refresh
 
-```sh
-ln -s /absolute/path/to/golang/claude-skill/skills /path/to/your/project/.claude/skills
-```
+If credentials expire mid-session:
 
-This is exactly how `golang/.claude/skills` is wired in this repo —
-see [Working inside this repo](#working-inside-this-repo) below.
+1. Export fresh credentials:
+   ```sh
+   eval "$(aws configure export-credentials --format env)"
+   ```
 
-## Step 5 — Verify
-
-In Claude Code, say: *"run thor_doctor"*. You should see all checks
-pass: embedded prompts, AWS credentials, Bedrock model access in the
-active region.
-
-If credentials are missing or expired, refresh with **whichever
-applies** — pick one:
-
-```
-aws sso login --profile <profile>     # SSO users
-aws configure                         # static keys
-```
-
-No restart needed — the Bedrock client picks up refreshed credentials
-on the next call.
-
-## Working inside this repo
-
-If you're iterating on Thor itself, open the repo root in
-Claude Code directly. The `.claude/skills` directory is a single
-symlink pointing at `claude-skill/skills/`:
-
-```
-golang/.claude/skills -> ../claude-skill/skills
-```
-
-That means every skill under `claude-skill/skills/<name>/SKILL.md`
-shows up automatically — no per-skill symlink, no copying. Edit any
-`SKILL.md` in `claude-skill/skills/` and reload Claude Code to pick up
-the change.
-
-## Adding a new skill
-
-Skills live canonically under `claude-skill/skills/<name>/SKILL.md`,
-matching the layout Claude Code expects (`.claude/skills/<name>/SKILL.md`).
-The `.claude/skills` symlink above means dropping a new skill directory
-into `claude-skill/skills/` is the only step needed.
-
-From the `golang/` directory:
-
-```sh
-SKILL=my-new-skill
-mkdir -p claude-skill/skills/$SKILL
-$EDITOR claude-skill/skills/$SKILL/SKILL.md
-```
-
-`SKILL.md` MUST start with frontmatter — `name` must match the
-directory name, and `description` is what Claude scans to decide when
-to invoke:
-
-```markdown
----
-name: my-new-skill
-description: One sentence on when this skill applies. Be specific and
-  include the verbs and nouns the user is likely to say. Claude only
-  reads the body once it has decided to invoke based on this description.
----
-
-# Skill body — workflow steps, tool call sequences, examples
-```
-
-Notes:
-
-- Skills are loaded at session start. Restart Claude Code (or reload the
-  skills panel) after creating one.
-- Supporting files (templates, scripts, fixtures) can live alongside
-  `SKILL.md` inside the skill directory and be referenced by relative
-  path from the body.
-- A flat `.claude/skills/<name>.md` will NOT load — the file must be
-  named `SKILL.md` inside a per-skill directory.
-
-> **Kiro equivalent:** Kiro uses a flatter convention. The whole
-> `.kiro/steering` directory in this repo is *not* a single symlink —
-> individual files are linked because Kiro reads any `.md` directly
-> under `steering/` (no per-skill subdirectory, filename is freeform):
->
-> ```
-> golang/.kiro/steering/setup.md      -> ../../kiro-power/steering/setup.md
-> golang/.kiro/steering/validation.md -> ../../kiro-power/steering/validation.md
-> ```
->
-> To add a new Kiro steering doc: create
-> `kiro-power/steering/<name>.md`, then
-> `ln -s ../../kiro-power/steering/<name>.md .kiro/steering/<name>.md`.
+2. Reconnect the MCP server:
+   ```
+   /mcp
+   ```
+   Select the Thor server and reconnect.
 
 ## What's in this directory
 
 ```
 claude-skill/
-├── README.md                        # this file
-├── mcp.json                         # Claude Code MCP config — copy as .mcp.json
-├── CLAUDE.md                        # project context — copy as CLAUDE.md
+├── README.md              # this file
+├── mcp.json               # Claude Code MCP config — copy as .mcp.json
+├── CLAUDE.md              # project context — copy as CLAUDE.md
 └── skills/
     └── thor-validate/
-        └── SKILL.md                 # validation workflow skill
+        └── SKILL.md       # validation workflow skill
 ```
 
 ## Troubleshooting
 
 | Error | Fix |
 |-------|-----|
-| `spawn thor-mcp ENOENT` | `thor-mcp` isn't on `PATH`. Run `make install-local` or replace the `command` in `mcp.json` with an absolute path. |
-| `ExpiredTokenException` / "credentials expired" | Run one of the four refresh commands above and retry. No restart needed. |
-| `AccessDeniedException` on Converse | Your AWS profile doesn't have Bedrock access in the configured region. Check `aws bedrock list-inference-profiles --region <region>`. |
-| Tools not appearing in Claude Code | Make sure `.mcp.json` is in the directory you launch `claude` from, then reload the MCP servers panel. |
+| `spawn npx ENOENT` | `npx` isn't on PATH. Use the absolute path or ensure Node.js 20+ is installed. |
+| `ExpiredTokenException` / "credentials expired" | Export fresh credentials and reconnect the MCP server (`/mcp`). |
+| `AccessDeniedException` on Converse | Your AWS credentials don't have Bedrock access in the configured region. Check `aws bedrock list-inference-profiles --region <region>`. |
+| Tools not appearing | Make sure `.mcp.json` is in the directory you launch `claude` from, then reconnect MCP servers. |
